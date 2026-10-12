@@ -38,9 +38,13 @@ public final class WarfareEvents {
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
+        // Filet de securite : si l'evenement de config n'a pas ete recu, on relit ici.
+        com.warfare.WarfareConfig.reload();
         WarfareData data = WarfareData.get(server);
-        Warfare.LOGGER.info("Warfare pret : lobby={} points d'apparition={}",
-                data.getLobby() == null ? "non defini" : data.getLobby().describe(), data.getSpawns().size());
+        Warfare.LOGGER.info("Warfare pret : lobby={} points d'apparition={} | {} joueur(s) min, {} elim., {} s",
+                data.getLobby() == null ? "non defini" : data.getLobby().describe(), data.getSpawns().size(),
+                com.warfare.WarfareConfig.minPlayers, com.warfare.WarfareConfig.killLimit,
+                com.warfare.WarfareConfig.matchSeconds);
         if (!data.isReady()) {
             Warfare.LOGGER.warn("Arene incomplete : utiliser /warfare setlobby puis /warfare addspawn");
         }

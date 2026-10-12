@@ -8,6 +8,7 @@ import com.warfare.perk.PerkEffects;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
 import org.slf4j.Logger;
 
@@ -22,10 +23,11 @@ public class Warfare {
 
     public Warfare() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, WarfareConfig.SPEC, "warfare-common.toml");
+        // ModConfigEvent est poste sur le bus DU MOD, pas sur celui de Forge.
+        FMLJavaModLoadingContext.get().getModEventBus().register(WarfareConfig.class);
         WarfareNetwork.register();
         MinecraftForge.EVENT_BUS.register(WarfareEvents.class);
         MinecraftForge.EVENT_BUS.register(WarfareCommand.class);
-        MinecraftForge.EVENT_BUS.register(WarfareConfig.class);
         MinecraftForge.EVENT_BUS.register(PerkEffects.class);
     }
 }

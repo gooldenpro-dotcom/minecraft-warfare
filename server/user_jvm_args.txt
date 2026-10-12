@@ -1,0 +1,3 @@
+# Minecraft Warfare - arguments JVM (4 Go de RAM)
+-Xmx4G
+-Xms4G

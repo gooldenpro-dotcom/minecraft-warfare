@@ -22,6 +22,9 @@ server/crash-reports/
 *.log
 *.log.gz
 
+# --- Packs d'armes TaCZ (regeneres au demarrage depuis le jar) ---
+server/tacz/
+
 # --- Caches Forge/Minecraft ---
 server/.mixin.out/
 server/defaultconfigs/

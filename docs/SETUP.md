@@ -122,3 +122,19 @@ Donner une AK-47 + 64 cartouches :
 | `LanServerPinger: No route to host` | normal en local sur macOS, sans effet |
 | `Configuration file ... is not correct. Correcting` | normal au premier lancement (création des configs) |
 | Arme invisible / texture manquante | TaCZ absent côté client |
+
+## 9. Checklist de tests en jeu
+
+- [ ] `./start.sh` → la console affiche `Done (XX.XXXs)!`
+- [ ] Prism Launcher → instance `Minecraft Warfare` se lance sans erreur
+- [ ] Multijoueur → le serveur `localhost` répond, MOTD **Minecraft Warfare**
+- [ ] Connexion OK, aucun kick `Incompatible mod set`
+- [ ] Console serveur : `op TonPseudo`, puis en jeu `/gamemode creative` (test libre)
+- [ ] `/give TonPseudo tacz:modern_kinetic_gun{GunId:"tacz:ak47"}` → l'AK-47 apparaît avec son modèle 3D
+- [ ] `/give TonPseudo tacz:ammo{AmmoId:"tacz:762x39"} 64` → munitions en inventaire
+- [ ] Touches TaCZ : *Options → Commandes → catégorie « Timeless & Classics Guns: Zero »*
+      (vérifier Shoot / Aim / Reload / Fire Select)
+- [ ] Recharger, viser, tirer : son + animation + impacts visibles
+- [ ] Console serveur : aucune ligne `ERROR` pendant le tir
+- [ ] Repasser en `/gamemode adventure` → les blocs ne se cassent plus, le tir fonctionne toujours
+- [ ] `stop` dans la console → `All dimensions are saved`

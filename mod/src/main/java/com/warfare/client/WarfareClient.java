@@ -19,7 +19,7 @@ import org.lwjgl.glfw.GLFW;
 public final class WarfareClient {
 
     public static final KeyMapping OPEN_CLASSES = new KeyMapping(
-            "key.warfare.open_classes",
+            "key.warfare.open_menu",
             KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_C,

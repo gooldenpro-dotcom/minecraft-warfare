@@ -41,6 +41,10 @@ public final class WarfareNetwork {
 
     public static void register() {
         int id = 0;
+        CHANNEL.registerMessage(id++, MatchState.class, MatchState::encode, MatchState::decode,
+                MatchState::handle);
+        CHANNEL.registerMessage(id++, RequestStart.class, RequestStart::encode, RequestStart::decode,
+                RequestStart::handle);
         CHANNEL.registerMessage(id++, SyncClasses.class, SyncClasses::encode, SyncClasses::decode,
                 SyncClasses::handle);
         CHANNEL.registerMessage(id++, SaveClass.class, SaveClass::encode, SaveClass::decode,
@@ -56,6 +60,69 @@ public final class WarfareNetwork {
         for (GunCatalog.Entry entry : GunCatalog.all()) allowedGuns.add(entry.gunId());
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new SyncClasses(classes, allowedGuns, menuAllowed));
+    }
+
+    /** Etat de la partie, pousse a tous les joueurs une fois par seconde. */
+    public record MatchState(String state, int secondsLeft, int maxPlayers, boolean canStart,
+                             String mapName, List<Entry> players) {
+
+        public record Entry(String name, int kills) {}
+
+        public static void encode(MatchState msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.state, 16);
+            buf.writeVarInt(msg.secondsLeft);
+            buf.writeVarInt(msg.maxPlayers);
+            buf.writeBoolean(msg.canStart);
+            buf.writeUtf(msg.mapName, 64);
+            buf.writeVarInt(msg.players.size());
+            for (Entry entry : msg.players) {
+                buf.writeUtf(entry.name(), 32);
+                buf.writeVarInt(entry.kills());
+            }
+        }
+
+        public static MatchState decode(FriendlyByteBuf buf) {
+            String state = buf.readUtf(16);
+            int seconds = buf.readVarInt();
+            int max = buf.readVarInt();
+            boolean canStart = buf.readBoolean();
+            String map = buf.readUtf(64);
+            int size = buf.readVarInt();
+            List<Entry> players = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) players.add(new Entry(buf.readUtf(32), buf.readVarInt()));
+            return new MatchState(state, seconds, max, canStart, map, players);
+        }
+
+        public static void handle(MatchState msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> com.warfare.client.ClientMatchState.accept(msg)));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Bouton LANCER LA PARTIE : le serveur revalide la permission. */
+    public record RequestStart() {
+        public static void encode(RequestStart msg, FriendlyByteBuf buf) {}
+
+        public static RequestStart decode(FriendlyByteBuf buf) {
+            return new RequestStart();
+        }
+
+        public static void handle(RequestStart msg, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                ServerPlayer player = ctx.get().getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) {
+                    player.sendSystemMessage(Txt.info(Txt.c("Reserve aux operateurs.", ChatFormatting.RED)));
+                    return;
+                }
+                if (!com.warfare.game.GameManager.get().startCountdown(player.server)) {
+                    player.sendSystemMessage(Txt.info(Txt.c(
+                            "Impossible : partie en cours ou arene incomplete.", ChatFormatting.RED)));
+                }
+            });
+            ctx.get().setPacketHandled(true);
+        }
     }
 
     // ------------------------------------------------------------ serveur -> client

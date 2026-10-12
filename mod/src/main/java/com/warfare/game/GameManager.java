@@ -216,6 +216,7 @@ public final class GameManager {
                 p.getFoodData().setFoodLevel(20);
                 pushMenuState(p, false);
             }
+            broadcastMatchState(server);
         }
     }
 
@@ -498,6 +499,29 @@ public final class GameManager {
             Sidebar.show(player, title, lines);
         }
         lastClockShown = seconds;
+    }
+
+    /** Etat de la partie pour les ecrans client (hub du lobby et ecran de preparation). */
+    private void broadcastMatchState(MinecraftServer server) {
+        List<WarfareNetwork.MatchState.Entry> entries = new ArrayList<>();
+        for (Map.Entry<UUID, Integer> e : ranking()) {
+            entries.add(new WarfareNetwork.MatchState.Entry(nameOf(server, e.getKey()), e.getValue()));
+        }
+        int seconds = switch (state) {
+            case COUNTDOWN -> (int) Math.ceil((WarfareConfig.countdownSeconds * 20 - stateTicks) / 20.0);
+            case RUNNING -> Math.max(0, matchTicksLeft / 20);
+            case ENDED -> Math.max(0, (WarfareConfig.endScreenSeconds * 20 - stateTicks) / 20);
+            case LOBBY -> 0;
+        };
+        boolean ready = WarfareData.get(server).isReady();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            String map = player.level().dimension().location().getPath().toUpperCase(java.util.Locale.ROOT);
+            WarfareNetwork.CHANNEL.send(
+                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                    new WarfareNetwork.MatchState(state.name(), seconds, server.getMaxPlayers(),
+                            player.hasPermissions(2) && state == GameState.LOBBY && ready,
+                            map, entries));
+        }
     }
 
     private List<Map.Entry<UUID, Integer>> ranking() {

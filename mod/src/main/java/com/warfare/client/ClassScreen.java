@@ -32,16 +32,16 @@ public class ClassScreen extends Screen {
     private static final int SIDEBAR_W = 58;
     private static final int ROW_H = 12;
 
-    private static final int C_SHADE = 0xC0000000;
-    private static final int C_PANEL = 0xFF191C17;
-    private static final int C_INSET = 0xFF101209;
-    private static final int C_BORDER = 0xFF46523F;
-    private static final int C_ACCENT = 0xFFB9922F;
-    private static final int C_TEXT = 0xFFD6DACF;
-    private static final int C_MUTED = 0xFF76806F;
-    private static final int C_SELECTED = 0xFF2B3526;
+    private static final int C_SHADE = Palette.SHADE;
+    private static final int C_PANEL = Palette.PANEL;
+    private static final int C_INSET = Palette.INSET;
+    private static final int C_BORDER = Palette.BORDER;
+    private static final int C_ACCENT = Palette.ACCENT;
+    private static final int C_TEXT = Palette.TEXT;
+    private static final int C_MUTED = Palette.MUTED;
+    private static final int C_SELECTED = Palette.SELECTED;
 
-    private enum Tab { WEAPONS, PERKS, STREAKS }
+    public enum Tab { WEAPONS, PERKS, STREAKS }
 
     private int left;
     private int top;
@@ -64,8 +64,17 @@ public class ClassScreen extends Screen {
     private int listW;
     private int listH;
 
+    @Nullable
+    private final Screen parent;
+
     public ClassScreen() {
+        this(Tab.WEAPONS, null);
+    }
+
+    public ClassScreen(Tab initialTab, @Nullable Screen parent) {
         super(Component.literal("Creer une classe"));
+        this.tab = initialTab;
+        this.parent = parent;
     }
 
     // ------------------------------------------------------------------ init
@@ -385,6 +394,10 @@ public class ClassScreen extends Screen {
     @Override
     public void onClose() {
         save();
+        if (parent != null && minecraft != null) {
+            minecraft.setScreen(parent);
+            return;
+        }
         super.onClose();
     }
 
@@ -421,36 +434,4 @@ public class ClassScreen extends Screen {
         return text.length() <= max ? text : text.substring(0, max - 1) + "…";
     }
 
-    /** Bouton dessine a la main, dans le style du menu. */
-    private static final class WarButton extends AbstractWidget {
-        private final Runnable action;
-        private boolean selected;
-
-        WarButton(int x, int y, int width, int height, Component message, Runnable action) {
-            super(x, y, width, height, message);
-            this.action = action;
-        }
-
-        @Override
-        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            int background = selected ? C_SELECTED : (isHovered() ? 0xFF232821 : C_INSET);
-            graphics.fill(getX(), getY(), getX() + width, getY() + height, background);
-            outline(graphics, getX(), getY(), width, height, selected ? C_ACCENT : C_BORDER);
-            if (selected) graphics.fill(getX(), getY(), getX() + 2, getY() + height, C_ACCENT);
-
-            int color = selected ? C_ACCENT : (isHovered() ? 0xFFFFFFFF : C_TEXT);
-            graphics.drawCenteredString(Minecraft.getInstance().font, getMessage(),
-                    getX() + width / 2, getY() + (height - 8) / 2, color);
-        }
-
-        @Override
-        public void onClick(double mouseX, double mouseY) {
-            action.run();
-        }
-
-        @Override
-        protected void updateWidgetNarration(NarrationElementOutput output) {
-            defaultButtonNarrationText(output);
-        }
-    }
 }

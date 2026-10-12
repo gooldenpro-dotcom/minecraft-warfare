@@ -1,0 +1,36 @@
+# --- Jars et binaires téléchargés ---
+*.jar
+downloads/
+server/libraries/
+server/mods/*.jar
+
+# --- Mondes et données de jeu ---
+server/world/
+server/world_nether/
+server/world_the_end/
+server/*/world/
+server/banned-*.json
+server/ops.json
+server/whitelist.json
+server/usercache.json
+server/usernamecache.json
+server/session.lock
+
+# --- Logs & crash reports ---
+server/logs/
+server/crash-reports/
+*.log
+*.log.gz
+
+# --- Caches Forge/Minecraft ---
+server/.mixin.out/
+server/defaultconfigs/
+server/config/
+server/run/
+server/debug/
+
+# --- EULA (accepté localement) ---
+server/eula.txt
+
+# --- macOS ---
+.DS_Store

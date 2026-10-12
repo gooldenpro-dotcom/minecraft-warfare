@@ -14,6 +14,7 @@ public final class WarfareConfig {
     private static final ForgeConfigSpec.Builder B = new ForgeConfigSpec.Builder();
 
     // --- Partie ---
+    private static final ForgeConfigSpec.BooleanValue AUTO_START;
     private static final ForgeConfigSpec.IntValue MIN_PLAYERS;
     private static final ForgeConfigSpec.IntValue COUNTDOWN_SECONDS;
     private static final ForgeConfigSpec.IntValue KILL_LIMIT;
@@ -61,7 +62,12 @@ public final class WarfareConfig {
 
     static {
         B.comment("Reglages de la partie Free For All").push("match");
-        MIN_PLAYERS = B.comment("Nombre de joueurs connectes a partir duquel le compte a rebours demarre")
+        AUTO_START = B.comment("Lancer la partie automatiquement des que minPlayers est atteint.",
+                        "false = la partie se lance depuis le menu d'accueil ou avec /warfare start.")
+                .define("autoStart", false);
+        MIN_PLAYERS = B.comment("Nombre de joueurs necessaires pour lancer une partie",
+                        "Sert de seuil au demarrage automatique, et empeche le compte a rebours",
+                        "de continuer s'il ne reste plus assez de monde.")
                 .defineInRange("minPlayers", 2, 1, 100);
         COUNTDOWN_SECONDS = B.comment("Duree du compte a rebours avant le debut de la partie, en secondes")
                 .defineInRange("countdownSeconds", 30, 3, 300);
@@ -146,6 +152,7 @@ public final class WarfareConfig {
     }
 
     // --- Cache relu a chaque chargement ---
+    public static boolean autoStart = false;
     public static int minPlayers = 2;
     public static int countdownSeconds = 30;
     public static int killLimit = 30;
@@ -195,6 +202,7 @@ public final class WarfareConfig {
 
     /** Recharge le cache depuis la spec. Appele par Forge et par /warfare reload. */
     public static void reload() {
+        autoStart = AUTO_START.get();
         minPlayers = MIN_PLAYERS.get();
         countdownSeconds = COUNTDOWN_SECONDS.get();
         killLimit = KILL_LIMIT.get();

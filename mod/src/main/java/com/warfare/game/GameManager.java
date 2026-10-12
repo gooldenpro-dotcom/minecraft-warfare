@@ -232,6 +232,9 @@ public final class GameManager {
             }
             return;
         }
+        // Sans demarrage automatique, la partie part du menu d'accueil ou de /warfare start.
+        if (!WarfareConfig.autoStart) return;
+
         if (players.size() >= WarfareConfig.minPlayers) {
             startCountdown(server);
             return;

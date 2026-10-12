@@ -3,6 +3,19 @@
 > **A relire au debut de chaque session, et a mettre a jour a la fin.**
 > Derniere mise a jour : 12 octobre 2026, fin de la session « modes multi + menu ».
 
+## En cours — 0.7.1, non commite
+
+Police et habillage du menu (voir CHANGELOG 0.7.1). Compile, deploye dans
+`server/mods/`, `pack/mods/` et l'instance Prism, serveur demarre proprement
+(`Done (2.280s)`). **Pas encore commite ni pousse sur GitHub** : le commit se fait
+sur demande (regle 12) et la publication du pack aussi (regle 8).
+
+Tant que le pack n'est pas pousse, packwiz redonnera la 0.7.0 aux joueurs au
+prochain lancement, y compris sur cette machine : le jar 0.7.1 depose a la main dans
+l'instance Prism sera ecrase. Pour tester en local sans publier, lancer l'instance
+sans laisser packwiz tourner, ou publier le pack.
+
+
 ## 1. Ou en est-on
 
 Mod `warfare 0.7.0` : le multijoueur est jouable (6 modes, progression, menu repare,

@@ -75,6 +75,12 @@ public class ClassScreen extends Screen {
         this(Tab.WEAPONS, null);
     }
 
+    /** Ouvre l'editeur directement sur un emplacement donne. */
+    public ClassScreen(Tab initialTab, @Nullable Screen parent, int slot) {
+        this(initialTab, parent);
+        this.editingSlot = Math.max(0, Math.min(PlayerClasses.SLOTS - 1, slot));
+    }
+
     public ClassScreen(Tab initialTab, @Nullable Screen parent) {
         super(Component.literal("Creer une classe"));
         this.tab = initialTab;
@@ -182,7 +188,7 @@ public class ClassScreen extends Screen {
 
         for (String type : types) {
             String label = GunCatalog.typeShort(type);
-            int w = font.width(label) + 10;
+            int w = font.width(Fonts.ui(label)) + 10;
             if (filterX + w > contentX + listW) {
                 filterX = contentX;
                 filterY += 16;
@@ -283,16 +289,16 @@ public class ClassScreen extends Screen {
         outline(graphics, left, top, PANEL_W, PANEL_H, C_BORDER);
         graphics.fill(left + 1, top + 1, left + PANEL_W - 1, top + 19, C_INSET);
         graphics.fill(left + 1, top + 19, left + PANEL_W - 1, top + 20, C_ACCENT);
-        graphics.drawString(font, "CREER UNE CLASSE", left + 8, top + 6, C_ACCENT, false);
+        graphics.drawString(font, Fonts.ui("CREER UNE CLASSE"), left + 8, top + 6, C_ACCENT, false);
         String header = "niveau " + ClientClassData.level
                 + (ClientClassData.prestige > 0 ? " - P" + ClientClassData.prestige : "")
                 + "   emplacement " + (editingSlot + 1) + "/" + PlayerClasses.SLOTS;
-        graphics.drawString(font, header, left + PANEL_W - 30 - font.width(header), top + 6,
+        graphics.drawString(font, Fonts.ui(header), left + PANEL_W - 30 - font.width(Fonts.ui(header)), top + 6,
                 C_MUTED, false);
 
         graphics.fill(left + 1, top + 20, left + SIDEBAR_W, top + PANEL_H - 1, C_INSET);
         graphics.vLine(left + SIDEBAR_W, top + 20, top + PANEL_H - 1, C_BORDER);
-        graphics.drawString(font, "NOM", contentX, top + 27, C_MUTED, false);
+        graphics.drawString(font, Fonts.ui("NOM"), contentX, top + 27, C_MUTED, false);
 
         switch (tab) {
             case WEAPONS -> renderWeaponsTab(graphics, mouseX, mouseY);
@@ -300,7 +306,7 @@ public class ClassScreen extends Screen {
             case STREAKS -> renderStreaksTab(graphics);
         }
 
-        graphics.drawString(font, "Equipee : " + trim(ClientClassData.classes.current().name(), 14),
+        graphics.drawString(font, Fonts.ui("Equipee : " + trim(ClientClassData.classes.current().name(), 14)),
                 contentX + 228, top + PANEL_H - 21, C_MUTED, false);
 
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -308,14 +314,14 @@ public class ClassScreen extends Screen {
 
     private void renderWeaponsTab(GuiGraphics graphics, int mouseX, int mouseY) {
         int sideX = contentX + listW + 8;
-        graphics.drawString(font, "PRINCIPALE", sideX, top + 70, C_MUTED, false);
-        graphics.drawString(font, trim(gunLabel(draft.primaryGun()), 20), sideX, top + 81, C_TEXT, false);
-        graphics.drawString(font, "SECONDAIRE", sideX, top + 99, C_MUTED, false);
-        graphics.drawString(font, trim(gunLabel(draft.secondaryGun()), 20), sideX, top + 110, C_TEXT, false);
-        graphics.drawString(font, "molette : defiler", sideX, top + 136, C_MUTED, false);
-        graphics.drawString(font, "clic : choisir", sideX, top + 147, C_MUTED, false);
+        graphics.drawString(font, Fonts.ui("PRINCIPALE"), sideX, top + 70, C_MUTED, false);
+        graphics.drawString(font, Fonts.ui(trim(gunLabel(draft.primaryGun()), 20)), sideX, top + 81, C_TEXT, false);
+        graphics.drawString(font, Fonts.ui("SECONDAIRE"), sideX, top + 99, C_MUTED, false);
+        graphics.drawString(font, Fonts.ui(trim(gunLabel(draft.secondaryGun()), 20)), sideX, top + 110, C_TEXT, false);
+        graphics.drawString(font, Fonts.ui("molette : defiler"), sideX, top + 136, C_MUTED, false);
+        graphics.drawString(font, Fonts.ui("clic : choisir"), sideX, top + 147, C_MUTED, false);
         if (locked != null) {
-            graphics.drawString(font, trim(locked, 26), sideX, top + 165, 0xFFB4534A, false);
+            graphics.drawString(font, Fonts.ui(trim(locked, 26)), sideX, top + 165, 0xFFB4534A, false);
         }
 
         graphics.fill(listX, listY, listX + listW, listY + listH, C_INSET);
@@ -341,17 +347,17 @@ public class ClassScreen extends Screen {
             } else if (hovered) {
                 graphics.fill(listX + 1, y, listX + listW - 1, y + ROW_H, 0xFF20241D);
             }
-            graphics.drawString(font, trim(nameOf(entry), 22), listX + 7, y + 2,
+            graphics.drawString(font, Fonts.ui(trim(nameOf(entry), 22)), listX + 7, y + 2,
                     !unlocked ? 0xFF6A5252 : chosen ? C_ACCENT : C_TEXT, false);
             String right = unlocked ? GunCatalog.typeShort(entry.type())
                     : "NIV. " + Unlocks.gunLevel(entry.gunId());
-            graphics.drawString(font, right, listX + listW - 10 - font.width(right), y + 2,
+            graphics.drawString(font, Fonts.ui(right), listX + listW - 10 - font.width(Fonts.ui(right)), y + 2,
                     unlocked ? C_MUTED : 0xFFB4534A, false);
         }
         graphics.disableScissor();
 
         if (visible.isEmpty()) {
-            graphics.drawString(font, "Aucune arme disponible", listX + 7, listY + 6, C_MUTED, false);
+            graphics.drawString(font, Fonts.ui("Aucune arme disponible"), listX + 7, listY + 6, C_MUTED, false);
         }
         if (visible.size() > maxRows) {
             int trackH = listH - 2;
@@ -365,24 +371,24 @@ public class ClassScreen extends Screen {
     private void renderPerksTab(GuiGraphics graphics) {
         int y = top + 66;
         for (int category = 1; category <= Perk.CATEGORIES; category++) {
-            graphics.drawString(font, "CATEGORIE " + category, contentX, y, C_MUTED, false);
-            graphics.drawString(font, trim(draft.perk(category).description(), 54),
+            graphics.drawString(font, Fonts.ui("CATEGORIE " + category), contentX, y, C_MUTED, false);
+            graphics.drawString(font, Fonts.ui(trim(draft.perk(category).description(), 54)),
                     contentX, y + 28, C_TEXT, false);
             y += 38;
         }
     }
 
     private void renderStreaksTab(GuiGraphics graphics) {
-        graphics.drawString(font, "3 killstreaks par classe - seuil en eliminations consecutives",
+        graphics.drawString(font, Fonts.ui("3 killstreaks par classe - seuil en eliminations consecutives"),
                 contentX, top + 60, C_MUTED, false);
         int y = top + 70;
         for (Killstreak streak : Killstreak.sorted()) {
-            graphics.drawString(font, trim(streak.description(), 36), contentX + 176, y + 5,
+            graphics.drawString(font, Fonts.ui(trim(streak.description(), 36)), contentX + 176, y + 5,
                     draft.has(streak) ? C_TEXT : C_MUTED, false);
             y += 24;
         }
         int chosen = draft.streaks().size();
-        graphics.drawString(font, "selection : " + chosen + "/" + Killstreak.EQUIPPED,
+        graphics.drawString(font, Fonts.ui("selection : " + chosen + "/" + Killstreak.EQUIPPED),
                 contentX, top + PANEL_H - 44, chosen == Killstreak.EQUIPPED ? C_ACCENT : C_MUTED, false);
     }
 

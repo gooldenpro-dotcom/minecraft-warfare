@@ -46,14 +46,14 @@ public class MatchIntroScreen extends Screen {
                 right, 70, 1.6f, Palette.TEXT, true);
         String waiting = ClientMatchState.state.equals("COUNTDOWN")
                 ? "Preparation de la partie..." : "Partie en cours";
-        graphics.drawString(font, waiting, right - font.width(waiting), 94, Palette.MUTED, false);
+        graphics.drawString(font, Fonts.ui(waiting), right - font.width(Fonts.ui(waiting)), 94, Palette.MUTED, false);
 
         // Compte a rebours
         if (ClientMatchState.state.equals("COUNTDOWN")) {
             String seconds = String.valueOf(Math.max(0, ClientMatchState.secondsLeft));
             drawScaled(graphics, seconds, width / 2, height / 2 - 20, 5.0f, Palette.ACCENT, false);
             String label = "avant le debut";
-            graphics.drawString(font, label, (width - font.width(label)) / 2, height / 2 + 26,
+            graphics.drawString(font, Fonts.ui(label), (width - font.width(Fonts.ui(label))) / 2, height / 2 + 26,
                     Palette.MUTED, false);
         }
 
@@ -61,12 +61,12 @@ public class MatchIntroScreen extends Screen {
         graphics.fill(40, height - 86, width - 40, height - 85, Palette.BORDER);
         graphics.fill(40, height - 86, 140, height - 85, Palette.ACCENT);
 
-        graphics.drawString(font, "INFO", 40, height - 78, Palette.ACCENT, false);
+        graphics.drawString(font, Fonts.ui("INFO"), 40, height - 78, Palette.ACCENT, false);
         String tip = TIPS[(ticks / 80) % TIPS.length];
-        graphics.drawString(font, tip, 40, height - 64, Palette.TEXT, false);
+        graphics.drawString(font, Fonts.ui(tip), 40, height - 64, Palette.TEXT, false);
 
         String hint = "Echap pour masquer cet ecran";
-        graphics.drawString(font, hint, width - 40 - font.width(hint), height - 64, Palette.MUTED, false);
+        graphics.drawString(font, Fonts.ui(hint), width - 40 - font.width(Fonts.ui(hint)), height - 64, Palette.MUTED, false);
 
         super.render(graphics, mouseX, mouseY, partialTick);
     }
@@ -75,9 +75,9 @@ public class MatchIntroScreen extends Screen {
                             int color, boolean rightAligned) {
         graphics.pose().pushPose();
         graphics.pose().scale(scale, scale, 1.0f);
-        float width = font.width(text) * scale;
+        float width = font.width(Fonts.ui(text)) * scale;
         float drawX = rightAligned ? (x - width) / scale : (x - width / 2) / scale;
-        graphics.drawString(font, text, (int) drawX, (int) (y / scale), color, false);
+        graphics.drawString(font, Fonts.ui(text), (int) drawX, (int) (y / scale), color, false);
         graphics.pose().popPose();
     }
 

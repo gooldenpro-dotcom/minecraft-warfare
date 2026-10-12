@@ -24,11 +24,17 @@ Une etape = une session de travail. Cocher en avancant.
       on controle deja l'etat de la partie et les equipes.
 - [ ] **Sons et voix d'annonce** : sons vanilla uniquement, ou sons enregistres par nous.
       ⚠️ Ne pas importer les fichiers de MW2/BO2 (fichiers Activision).
-- [ ] **Police facon MW2** : ne pas copier la police du jeu. Soit une police libre
-      proche (condensee, militaire) embarquee dans un pack de ressources servi par le
-      serveur, soit une police bitmap dessinee pour le projet.
-- [ ] Pack de ressources automatique (`resource-pack=` dans `server.properties`)
-      pour que le joueur n'installe rien a la main.
+- [x] **Police facon MW2** — fait en 0.7.1. Rajdhani (SIL Open Font) embarquee dans le
+      jar du mod, appliquee a tous les ecrans. La police fournie par le joueur n'a pas
+      ete retenue : « All Rights Reserved », sans licence, et le pack est public.
+- [x] ~~Pack de ressources automatique~~ — sans objet : le jar du mod est deja un pack
+      de ressources, la police voyage avec lui. A ressortir seulement si on ajoute des
+      textures ou des sons lourds.
+- [ ] **Parties simultanees** : aujourd'hui le serveur n'a qu'**une seule partie**, le
+      mode choisi est pousse a tout le monde. Il faut pouvoir avoir plusieurs parties en
+      parallele (quelqu'un en Jeu d'armes pendant que d'autres sont en Melee generale) :
+      extraire de `GameManager` un objet `Match` (etat, joueurs, scores, carte, mode),
+      un registre de parties, et une liste rejoignable dans le menu. Structurant.
 - [ ] Modes manquants : Domination / Point strategique, Recherche et destruction.
 - [ ] Stand de tir : une arene « stand », mode entrainement, toutes les armes
       disponibles sans deblocage, cibles.

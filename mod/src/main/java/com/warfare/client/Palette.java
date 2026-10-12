@@ -9,11 +9,14 @@ public final class Palette {
     public static final int INSET = 0xFF101209;
     public static final int BORDER = 0xFF46523F;
     public static final int ACCENT = 0xFFB9922F;
-    public static final int TEXT = 0xFFD6DACF;
-    public static final int MUTED = 0xFF76806F;
+    public static final int TEXT = 0xFFE9EBE7;
+    public static final int MUTED = 0xFF8C928A;
     public static final int SELECTED = 0xFF2B3526;
     public static final int HOVER = 0xFF232821;
     public static final int DISABLED = 0xFF4A4F46;
+    /** Bandeau de l'entree de menu active : noir franc, comme un menu de jeu de tir. */
+    public static final int BAR_ACTIVE = 0xF2000000;
+    public static final int RULE = 0x55FFFFFF;
 
     public static void outline(GuiGraphics g, int x, int y, int w, int h, int color) {
         g.hLine(x, x + w - 1, y, color);

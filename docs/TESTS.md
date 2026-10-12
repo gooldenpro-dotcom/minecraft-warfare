@@ -1,6 +1,35 @@
-# Checklist de tests en jeu — 0.7.0
+# Checklist de tests en jeu — 0.7.3
 
 A faire a deux (ou seul avec `minPlayers = 1` dans `[match]`).
+
+## Choix de classe (0.7.3)
+0I. Menu -> CHOISIR UNE CLASSE : les 5 emplacements sont a gauche, l'apercu a droite.
+0J. **Les modeles des deux armes s'affichent** a droite. S'ils sont absents, invisibles
+    ou mal places, me le dire : c'est le seul point que je n'ai pas pu verifier.
+0K. Changer d'emplacement : l'apercu suit (nom, armes, atouts, killstreaks).
+0L. EQUIPER : l'entree devient « CLASSE EQUIPEE » et se grise.
+0M. MODIFIER : l'editeur s'ouvre **sur le bon emplacement** ; Echap y revient.
+0N. Une arme ou un atout au-dessus de ton niveau s'affiche en rouge avec « NIV. x ».
+
+## Mise en page (0.7.2)
+0A. **Toutes** les entrees du menu sont visibles, jusqu'a QUITTER LE SERVEUR.
+0B. Plus aucun coeur ni barre d'objets visible derriere le menu.
+0C. La ligne du joueur surligne ne deborde pas a droite.
+0D. Le pied de page ne chevauche aucune entree.
+0E. Redimensionner la fenetre (ou changer l'echelle d'interface dans les options) :
+    la mise en page reste centree et rien ne sort de l'ecran.
+0F. Ouvrir chaque panneau : JOUEURS, MODE DE JEU, CARTE, CLASSEMENT, MON PROFIL,
+    REGLAGES — l'intitule souligne est aligne avec le haut du menu.
+
+## Habillage (0.7.1)
+0a. Le texte du menu n'est **plus** dans la police de Minecraft (lettres carrees, fines).
+0b. Le titre MINECRAFT WARFARE est grand et ses lettres sont espacees.
+0c. Trois filets horizontaux separent les groupes d'entrees du menu.
+0d. L'entree survolee a un bandeau noir qui part du bord gauche de l'ecran.
+0e. Verifier aussi la police dans : creation de classe, ATH en partie, ecran de
+    preparation. Si un texte reste en police Minecraft, me le signaler.
+0f. Si les lettres sont mal alignees verticalement, me le dire : c'est le reglage
+    `shift` dans `assets/warfare/font/ui.json`, je l'ajusterai.
 
 ## Connexion et menu
 1. Se connecter : le menu d'accueil s'ouvre tout seul.

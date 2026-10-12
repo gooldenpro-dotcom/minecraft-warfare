@@ -2,6 +2,84 @@
 
 Format : version du mod `warfare`, de la plus recente a la plus ancienne.
 
+## 0.7.3 — 12 octobre 2026 — « ecran de choix de classe »
+
+### Nouvel ecran : CHOISIR UNE CLASSE
+- `client/ChooseClassScreen.java`. Le menu d'accueil ouvre desormais un **selecteur
+  avec apercu** au lieu de l'editeur : liste des 5 emplacements a gauche, detail
+  complet de la classe selectionnee a droite. L'editeur detaille (`ClassScreen`)
+  reste accessible par l'entree **MODIFIER**, qui s'ouvre directement sur
+  l'emplacement choisi (nouveau constructeur avec numero d'emplacement).
+- Apercu : nom de la classe sur un bandeau, arme principale et secondaire avec leur
+  **modele d'objet rendu en grand** (`GuiGraphics.renderItem` a l'echelle 4, la pile
+  est construite avec `Loadout.makeGun`, exactement comme l'equipement reel), les
+  3 atouts avec leur effet, les 3 killstreaks avec leur seuil.
+- Les entrees verrouillees par le niveau s'affichent en rouge avec « NIV. x »
+  (`Unlocks`), coherent avec le reste de la progression.
+- **EQUIPER** envoie `SelectClass` ; l'entree devient « CLASSE EQUIPEE » et se grise
+  quand la classe selectionnee est deja celle qui est equipee.
+- Meme grille centree que le menu d'accueil, meme police, meme pied de page.
+- L'ATH vanilla est masque sur cet ecran aussi.
+
+## 0.7.2 — 12 octobre 2026 — « mise en page du menu refaite »
+
+Defauts constates en jeu sur capture, tous corriges.
+
+### Corrections
+- **Le menu debordait de l'ecran** : avec 11 entrees a pas fixe, JOUEURS etait coupe en
+  bas et REGLAGES / RETOUR / QUITTER etaient hors champ. L'ecart entre entrees est
+  maintenant **deduit de la hauteur disponible** (borne entre 15 et 26 px), donc le
+  menu tient quelle que soit la resolution ou l'echelle d'interface.
+- **Le pied de page chevauchait les dernieres entrees.** Il a sa propre bande reservee.
+- **La ligne du joueur sortait de l'ecran a droite** : les lignes sont desormais bornees
+  a la largeur de la colonne.
+- **L'ATH de Minecraft traversait le menu** (coeurs, barre d'objets). Il est masque tant
+  qu'un ecran du mod est ouvert (`RenderGuiOverlayEvent`), le notre aussi.
+
+### Mise en page
+- Grille **centree** : zone de contenu bornee a 1080 px et centree, deux colonnes
+  (menu 36 %, panneau le reste) separees de 48 px, gouttiere proportionnelle.
+  Tout est calcule a partir de la taille de la fenetre, plus aucune coordonnee en dur.
+- Trois bandes : titre (titre interlettre + filet ambre pleine largeur + etat a gauche,
+  carte active a droite), corps, pied de page.
+- Chaque panneau a un **intitule interlettre souligne** aligne sur la meme grille que
+  le menu.
+- CLASSEMENT : lignes alternees et colonnes alignees a droite depuis le bord du panneau.
+- JOUEURS : lignes a hauteur fixe, liseré de couleur d'equipe, score aligne a droite.
+- MON PROFIL : grade en gros interlettre, barre d'XP elargie.
+
+## 0.7.1 — 12 octobre 2026 — « police et habillage du menu »
+
+### Police de l'interface
+- L'interface n'est plus dessinee avec la police de Minecraft. Le mod embarque
+  **Rajdhani** (Indian Type Foundry), caractere carre pense pour les interfaces,
+  sous licence **SIL Open Font 1.1** donc redistribuable.
+- Deux faces : `warfare:ui` (SemiBold) pour le texte, `warfare:title` (Bold) pour les
+  titres. Fichiers dans `mod/src/main/resources/assets/warfare/font/`, licence a cote.
+- La police est appliquee par le **style du Component** (`Style.withFont`), voie
+  supportee par Minecraft : ni mixin ni reflexion. Nouveau helper `client/Fonts.java`.
+- Elle voyage dans le jar du mod, qui est deja un pack de ressources : **rien de plus
+  a installer pour les joueurs**, et pas besoin de `resource-pack=` dans
+  `server.properties`.
+- Appliquee a `LobbyScreen`, `ClassScreen`, `MatchIntroScreen`, `HudOverlay`,
+  `ScorePopups`, `MenuItem` et `WarButton` (80 appels de dessin convertis).
+
+### Menu d'accueil
+- Titre **MINECRAFT WARFARE** interlettre et agrandi (`Fonts.drawTracked` : Minecraft
+  ne sait pas espacer les caracteres, on dessine glyphe par glyphe).
+- Les 11 entrees sont regroupees par **filets de separation** : partie / equipement /
+  informations / sortie. Les fonctions ajoutees en 0.7.0 sont toutes conservees.
+- Bandeau de l'entree active en **noir franc** et prolonge jusqu'au bord gauche de
+  l'ecran, au lieu d'un rectangle vert sombre.
+- Texte et gris neutralises (la teinte verte donnait un aspect « interface Minecraft »).
+
+### Police de Call of Duty : non retenue
+La police fournie (`ModernWarfare-8MM6z.ttf`, ffonts.net) porte en interne
+`Typeface (c) (your company). 2019. All Rights Reserved` et n'est accompagnee d'aucune
+licence. Le pack etant publie sur un depot GitHub public, elle n'a pas ete embarquee.
+Conforme a la regle 6 d'AGENTS.md. Elle reste utilisable **en local** par qui la
+remplace dans `assets/warfare/font/warfare_ui.ttf` sans republier le pack.
+
 ## 0.7.0 — 12 octobre 2026 — « modes multijoueur, progression, menu repare »
 
 ### Rangement

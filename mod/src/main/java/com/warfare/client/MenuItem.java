@@ -30,7 +30,7 @@ public class MenuItem extends AbstractWidget {
         int right = getX() + width;
 
         if (highlight) {
-            graphics.fill(getX() - 40, getY(), right + 4, getY() + height, 0xE6101309);
+            graphics.fill(-width * 4, getY(), right + 4, getY() + height, Palette.BAR_ACTIVE);
             graphics.fill(right + 4, getY(), right + 6, getY() + height, Palette.ACCENT);
             // bandeau oblique, purement decoratif
             for (int i = 0; i < height; i++) {
@@ -41,7 +41,8 @@ public class MenuItem extends AbstractWidget {
 
         int color = !active ? 0xFF55594F : highlight ? 0xFFFFFFFF : Palette.TEXT;
         var font = Minecraft.getInstance().font;
-        graphics.drawString(font, getMessage(), right - font.width(getMessage()),
+        net.minecraft.network.chat.Component label = Fonts.ui(getMessage().getString());
+        graphics.drawString(font, label, right - font.width(label),
                 getY() + (height - 8) / 2, color, false);
     }
 

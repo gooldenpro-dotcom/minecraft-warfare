@@ -1,6 +1,6 @@
 # Etat actuel — Minecraft Warfare
 
-> Mis a jour le 12 octobre 2026 — mod `warfare 0.7.0`
+> Mis a jour le 12 octobre 2026 — mod `warfare 0.7.3`
 > Ce fichier decrit ce qui **tourne vraiment aujourd'hui**. Pour la suite, voir
 > [PROCHAINES_ETAPES.md](PROCHAINES_ETAPES.md) et [ROADMAP.md](ROADMAP.md).
 
@@ -12,7 +12,7 @@
 | Forge | 47.4.10 | `server/`, `pack/pack.toml` |
 | Java | 17 (Oracle, arm64) | `/Library/Java/JavaVirtualMachines/jdk-17.jdk` |
 | TaCZ (armes) | 1.20.1-1.1.8-hotfix2 | `server/mods/`, `mod/libs/` |
-| Mod maison | `warfare 0.7.0` | `mod/`, compile vers `mod/build/libs/` |
+| Mod maison | `warfare 0.7.3` | `mod/`, compile vers `mod/build/libs/` |
 | Monde actif | `Terminal_MW2` | `server/Terminal_MW2/` |
 | Optimisation client | Embeddium, FerriteCore, ModernFix | `pack/mods/` |
 
@@ -21,11 +21,20 @@ MOTD « Minecraft Warfare ». Lancement : `./start.sh` (4 Go).
 
 ## Ce qui fonctionne
 
+### Habillage (0.7.1)
+- Toute l'interface utilise **Rajdhani** (SIL Open Font), embarquee dans le jar du
+  mod : les joueurs n'installent rien de plus. Plus de police Minecraft a l'ecran.
+- Menu d'accueil : grille centree calculee a partir de la fenetre, titre interlettre,
+  entrees regroupees par filets, bandeau noir sur l'entree active. Le menu ne
+  deborde plus et l'ATH vanilla est masque quand un ecran du mod est ouvert.
+
 ### Menu d'accueil (touche **M**, s'ouvre aussi a la connexion)
 - **Echap ferme le menu** et ne le rouvre pas tout seul (le blocage « impossible de
   quitter la partie » est corrige), **QUITTER LE SERVEUR** deconnecte proprement.
 - Choix du **mode de jeu** et de la **carte** depuis le menu, pousses a tous les joueurs.
-- Acces direct a **CREER UNE CLASSE** et **KILLSTREAKS**.
+- **CHOISIR UNE CLASSE** : selecteur avec apercu (armes et leur modele, atouts,
+  killstreaks, entrees verrouillees en rouge). **MODIFIER** ouvre l'editeur.
+- Acces direct a **KILLSTREAKS**.
 - Panneaux **JOUEURS**, **CLASSEMENT** (serveur entier, joueurs hors ligne compris),
   **MON PROFIL** (grade, niveau, barre d'XP, bouton prestige au niveau 70),
   **REGLAGES DE PARTIE**.

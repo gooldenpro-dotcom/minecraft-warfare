@@ -39,7 +39,7 @@ public class WarButton extends AbstractWidget {
         int color = !active ? Palette.DISABLED
                 : selected ? Palette.ACCENT
                 : isHovered() ? 0xFFFFFFFF : Palette.TEXT;
-        graphics.drawCenteredString(Minecraft.getInstance().font, getMessage(),
+        graphics.drawCenteredString(Minecraft.getInstance().font, Fonts.ui(getMessage().getString()),
                 getX() + width / 2, getY() + (height - 8) / 2, color);
     }
 

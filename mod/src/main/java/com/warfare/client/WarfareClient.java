@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.common.MinecraftForge;
@@ -50,6 +51,19 @@ public final class WarfareClient {
         public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
             ClientMatchState.reset();
             ScorePopups.clear();
+        }
+
+        /**
+         * Les ecrans du mod occupent tout l'ecran : on masque l'ATH vanilla (coeurs,
+         * barre d'objets, experience) et le notre pendant qu'ils sont ouverts.
+         */
+        @SubscribeEvent
+        public static void onRenderOverlay(RenderGuiOverlayEvent.Pre event) {
+            net.minecraft.client.gui.screens.Screen screen = Minecraft.getInstance().screen;
+            if (screen instanceof LobbyScreen || screen instanceof ClassScreen
+                    || screen instanceof ChooseClassScreen) {
+                event.setCanceled(true);
+            }
         }
 
         @SubscribeEvent

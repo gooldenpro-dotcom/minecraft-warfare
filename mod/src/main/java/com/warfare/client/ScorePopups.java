@@ -62,7 +62,7 @@ public final class ScorePopups {
             if (fade <= 8) continue;
             int rise = popup.age / 3;
             int color = (fade << 24) | 0x00E4C45A;
-            graphics.drawString(font, popup.text, right - font.width(popup.text), y - rise, color, true);
+            graphics.drawString(font, Fonts.ui(popup.text), right - font.width(Fonts.ui(popup.text)), y - rise, color, true);
             y -= 12;
         }
     }

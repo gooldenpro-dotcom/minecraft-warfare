@@ -52,34 +52,34 @@ public final class HudOverlay {
         if (ClientMatchState.teamMode()) {
             String alpha = String.valueOf(ClientMatchState.alphaScore);
             String bravo = String.valueOf(ClientMatchState.bravoScore);
-            graphics.drawString(font, alpha, bandX + 10, 5, 0xFFD24A3A, false);
-            graphics.drawString(font, clock, (width - font.width(clock)) / 2, 5, TEXT, false);
-            graphics.drawString(font, bravo, bandX + bandWidth - 10 - font.width(bravo), 5,
+            graphics.drawString(font, Fonts.ui(alpha), bandX + 10, 5, 0xFFD24A3A, false);
+            graphics.drawString(font, Fonts.ui(clock), (width - font.width(Fonts.ui(clock))) / 2, 5, TEXT, false);
+            graphics.drawString(font, Fonts.ui(bravo), bandX + bandWidth - 10 - font.width(Fonts.ui(bravo)), 5,
                     0xFF3FA9C9, false);
         } else {
             String score = ClientMatchState.myScore + " / " + ClientMatchState.scoreLimit;
-            graphics.drawString(font, clock, (width - font.width(clock)) / 2, 5, TEXT, false);
-            graphics.drawString(font, score, bandX + bandWidth - 10 - font.width(score), 5, MUTED, false);
+            graphics.drawString(font, Fonts.ui(clock), (width - font.width(Fonts.ui(clock))) / 2, 5, TEXT, false);
+            graphics.drawString(font, Fonts.ui(score), bandX + bandWidth - 10 - font.width(Fonts.ui(score)), 5, MUTED, false);
         }
 
         // --- Bas gauche : mode, serie, vies, echelle d'armes ---
         int y = height - 60;
-        graphics.drawString(font, ClientMatchState.modeTitle().toUpperCase(java.util.Locale.ROOT),
+        graphics.drawString(font, Fonts.ui(ClientMatchState.modeTitle().toUpperCase(java.util.Locale.ROOT)),
                 6, y, ACCENT, false);
         y += 11;
 
         if (ClientMatchState.nextStreakAt > 0) {
             String streak = "Serie " + ClientMatchState.myStreak + " / " + ClientMatchState.nextStreakAt;
-            graphics.drawString(font, streak, 6, y, TEXT, false);
+            graphics.drawString(font, Fonts.ui(streak), 6, y, TEXT, false);
             y += 11;
         }
         if (ClientMatchState.myLives > 0) {
-            graphics.drawString(font, "Vies " + ClientMatchState.myLives, 6, y, TEXT, false);
+            graphics.drawString(font, Fonts.ui("Vies " + ClientMatchState.myLives), 6, y, TEXT, false);
             y += 11;
         }
         if (ClientMatchState.ladderSize > 0) {
-            graphics.drawString(font, "Arme " + (ClientMatchState.ladderStep + 1) + " / "
-                    + ClientMatchState.ladderSize, 6, y, TEXT, false);
+            graphics.drawString(font, Fonts.ui("Arme " + (ClientMatchState.ladderStep + 1) + " / "
+                    + ClientMatchState.ladderSize), 6, y, TEXT, false);
         }
 
         // --- Bas droite : grade et progression ---
@@ -88,7 +88,7 @@ public final class HudOverlay {
         int barWidth = 90;
         int barX = width - barWidth - 6;
         int barY = height - 18;
-        graphics.drawString(font, rank, barX, barY - 11, ACCENT, false);
+        graphics.drawString(font, Fonts.ui(rank), barX, barY - 11, ACCENT, false);
         graphics.fill(barX, barY, barX + barWidth, barY + 4, 0xA0101309);
         long need = Math.max(1, ClientMatchState.xpToNext);
         int filled = (int) Math.min(barWidth, ClientMatchState.xpIntoLevel * barWidth / need);

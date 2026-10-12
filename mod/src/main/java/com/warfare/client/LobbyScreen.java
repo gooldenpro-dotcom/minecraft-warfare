@@ -8,26 +8,44 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Menu d'accueil du serveur : choix du mode, de la carte, des classes, classement,
  * profil, et sortie du serveur.
  *
- * Il s'ouvre a la connexion et entre deux parties. Echap le ferme (et ne le rouvre
- * pas tout seul) : le joueur garde toujours la main sur son jeu.
+ * Mise en page sur une grille centree, calculee a partir de la taille de la fenetre :
+ * une zone de contenu bornee, deux colonnes, un bandeau de titre et un pied de page.
+ * L'espacement des entrees est deduit de la hauteur disponible, donc le menu ne
+ * deborde jamais, quelle que soit la resolution ou l'echelle d'interface.
  *
- * Mise en page a plat, dessinee entierement : pas de cadre, pas de bouton en relief,
- * aucune texture ni logo tiers.
+ * Tout est dessine a plat : pas de cadre, pas de bouton en relief, aucune texture ni
+ * logo tiers. Police Rajdhani embarquee (voir Fonts).
  */
 public class LobbyScreen extends Screen {
     private enum Panel { PLAYERS, MODES, MAPS, RANKING, PROFILE, SETTINGS }
 
+    /** Largeur maximale de la zone de contenu : au-dela, on centre au lieu d'etaler. */
+    private static final int CONTENT_MAX = 1080;
+    private static final int COLUMN_GAP = 48;
+    private static final int ITEM_STEP_MAX = 26;
+    private static final int ITEM_STEP_MIN = 15;
+
     private Panel panel = Panel.PLAYERS;
+    private final List<Integer> separators = new ArrayList<>();
+
+    // Grille, recalculee a chaque init
+    private int contentX;
+    private int contentW;
     private int menuRight;
-    private int menuTop;
-    private int rightX;
-    private int rightWidth;
+    private int panelX;
+    private int panelW;
+    private int headerY;
+    private int bodyY;
+    private int footerY;
+    private int itemStep;
 
     public LobbyScreen() {
         super(Component.literal("Minecraft Warfare"));
@@ -39,40 +57,70 @@ public class LobbyScreen extends Screen {
         return true;
     }
 
+    // ------------------------------------------------------------------ grille
+
     @Override
     protected void init() {
-        int margin = Math.max(30, width / 10);
-        menuRight = margin + 190;
-        menuTop = Math.max(50, height / 6);
-        rightX = Math.max(menuRight + 70, width / 2 - 20);
-        rightWidth = Math.max(160, width - rightX - margin);
+        int gutter = Math.max(24, Math.round(width * 0.06f));
+        contentW = Math.min(CONTENT_MAX, width - gutter * 2);
+        contentX = (width - contentW) / 2;
 
-        int y = menuTop + 34;
-        y = addItem(y, "LANCER LA PARTIE", this::requestStart, ClientMatchState.canStart);
-        y = addItem(y, "MODE DE JEU", () -> show(Panel.MODES), true);
-        y = addItem(y, "CARTE", () -> show(Panel.MAPS), true);
-        y = addItem(y, "CREER UNE CLASSE",
-                () -> minecraft.setScreen(new ClassScreen(ClassScreen.Tab.WEAPONS, this)), true);
-        y = addItem(y, "KILLSTREAKS",
-                () -> minecraft.setScreen(new ClassScreen(ClassScreen.Tab.STREAKS, this)), true);
-        y = addItem(y, "CLASSEMENT", () -> {
-            WarfareNetwork.CHANNEL.sendToServer(new WarfareNetwork.RequestLeaderboard());
-            show(Panel.RANKING);
-        }, true);
-        y = addItem(y, "MON PROFIL", () -> show(Panel.PROFILE), true);
-        y = addItem(y, "JOUEURS", () -> show(Panel.PLAYERS), true);
-        y = addItem(y, "REGLAGES DE PARTIE", () -> show(Panel.SETTINGS), true);
-        y += 10;
-        y = addItem(y, "RETOUR AU JEU", this::onClose, true);
-        addItem(y, "QUITTER LE SERVEUR", this::disconnect, true);
+        int menuW = Math.max(190, Math.round(contentW * 0.36f));
+        menuRight = contentX + menuW;
+        panelX = menuRight + COLUMN_GAP;
+        panelW = contentX + contentW - panelX;
 
+        headerY = Math.max(28, Math.round(height * 0.11f));
+        bodyY = headerY + 54;
+        footerY = height - Math.max(34, Math.round(height * 0.07f));
+
+        separators.clear();
+        buildMenu();
         buildPanelWidgets();
     }
 
-    private int addItem(int y, String label, Runnable action, boolean enabled) {
-        addRenderableWidget(new MenuItem(menuRight - 190, y, 190, 18,
-                Component.literal(label), action).enabled(enabled));
-        return y + 21;
+    /**
+     * Les entrees sont regroupees ; l'ecart entre elles est deduit de la place
+     * disponible pour qu'aucune ne sorte de l'ecran.
+     */
+    private void buildMenu() {
+        record Entry(String label, Runnable action, boolean enabled, boolean startsGroup) {}
+        List<Entry> entries = List.of(
+                new Entry("LANCER LA PARTIE", this::requestStart, ClientMatchState.canStart, false),
+                new Entry("MODE DE JEU", () -> show(Panel.MODES), true, false),
+                new Entry("CARTE", () -> show(Panel.MAPS), true, false),
+                new Entry("CHOISIR UNE CLASSE",
+                        () -> minecraft.setScreen(new ChooseClassScreen(this)), true, true),
+                new Entry("KILLSTREAKS",
+                        () -> minecraft.setScreen(new ClassScreen(ClassScreen.Tab.STREAKS, this)), true, false),
+                new Entry("CLASSEMENT", () -> {
+                    WarfareNetwork.CHANNEL.sendToServer(new WarfareNetwork.RequestLeaderboard());
+                    show(Panel.RANKING);
+                }, true, true),
+                new Entry("MON PROFIL", () -> show(Panel.PROFILE), true, false),
+                new Entry("JOUEURS", () -> show(Panel.PLAYERS), true, false),
+                new Entry("REGLAGES DE PARTIE", () -> show(Panel.SETTINGS), true, false),
+                new Entry("RETOUR AU JEU", this::onClose, true, true),
+                new Entry("QUITTER LE SERVEUR", this::disconnect, true, false));
+
+        int groups = (int) entries.stream().filter(Entry::startsGroup).count();
+        int available = footerY - 14 - bodyY;
+        int needed = entries.size();
+        itemStep = Math.max(ITEM_STEP_MIN,
+                Math.min(ITEM_STEP_MAX, (available - groups * 10) / Math.max(1, needed)));
+        int itemHeight = Math.max(12, itemStep - 4);
+
+        int menuW = menuRight - contentX;
+        int y = bodyY;
+        for (Entry entry : entries) {
+            if (entry.startsGroup()) {
+                separators.add(y + 4);
+                y += 10;
+            }
+            addRenderableWidget(new MenuItem(contentX, y, menuW, itemHeight,
+                    Component.literal(entry.label()), entry.action()).enabled(entry.enabled()));
+            y += itemStep;
+        }
     }
 
     private void show(Panel next) {
@@ -82,12 +130,13 @@ public class LobbyScreen extends Screen {
 
     /** Les panneaux interactifs (modes, cartes, prestige) ont leurs propres boutons. */
     private void buildPanelWidgets() {
+        int y = bodyY + 22;
+        int buttonW = Math.min(260, panelW);
         switch (panel) {
             case MODES -> {
-                int y = menuTop + 16;
                 for (GameMode mode : GameMode.values()) {
                     final GameMode target = mode;
-                    WarButton button = new WarButton(rightX, y, Math.min(240, rightWidth), 18,
+                    WarButton button = new WarButton(panelX, y, buttonW, 18,
                             Component.literal(mode.title()),
                             () -> WarfareNetwork.CHANNEL.sendToServer(
                                     new WarfareNetwork.RequestMode(target.id())));
@@ -97,10 +146,9 @@ public class LobbyScreen extends Screen {
                 }
             }
             case MAPS -> {
-                int y = menuTop + 16;
                 for (String arena : ClientMatchState.arenas) {
                     final String target = arena;
-                    WarButton button = new WarButton(rightX, y, Math.min(240, rightWidth), 18,
+                    WarButton button = new WarButton(panelX, y, buttonW, 18,
                             Component.literal(arena.toUpperCase(Locale.ROOT)),
                             () -> WarfareNetwork.CHANNEL.sendToServer(
                                     new WarfareNetwork.RequestArena(target)));
@@ -112,7 +160,7 @@ public class LobbyScreen extends Screen {
             case PROFILE -> {
                 if (ClientMatchState.level >= Rank.MAX_LEVEL
                         && ClientMatchState.prestige < Rank.MAX_PRESTIGE) {
-                    addRenderableWidget(new WarButton(rightX, menuTop + 90, Math.min(200, rightWidth), 18,
+                    addRenderableWidget(new WarButton(panelX, bodyY + 108, Math.min(220, panelW), 18,
                             Component.literal("PASSER AU PRESTIGE"),
                             () -> WarfareNetwork.CHANNEL.sendToServer(
                                     new WarfareNetwork.RequestPrestige())));
@@ -142,18 +190,24 @@ public class LobbyScreen extends Screen {
         if (minecraft != null) minecraft.setScreen(null);
     }
 
-    // ---------------------------------------------------------------- rendu
+    // ------------------------------------------------------------------- rendu
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, width, height, 0xE8090B07, 0xF4050604);
+        graphics.fillGradient(0, 0, width, height, 0xF00A0B09, 0xFA060706);
 
-        int margin = menuRight - 190;
+        // Bandeau de titre
+        Fonts.drawTracked(graphics, font, "MINECRAFT WARFARE", contentX, headerY, 0xFFFFFFFF, 3, 1.6f);
+        graphics.fill(contentX, headerY + 26, contentX + contentW, headerY + 27, Palette.ACCENT);
+        label(graphics, stateLabel(), contentX, headerY + 33, Palette.MUTED);
+        String right = ClientMatchState.arena.isEmpty()
+                ? "AUCUNE CARTE" : ClientMatchState.arena.toUpperCase(Locale.ROOT);
+        graphics.drawString(font, Fonts.ui(right),
+                contentX + contentW - Fonts.width(font, right), headerY + 33, Palette.MUTED, false);
 
-        // Titre
-        graphics.drawString(font, "MINECRAFT WARFARE", margin, menuTop, Palette.TEXT, false);
-        graphics.fill(margin, menuTop + 14, menuRight + 14, menuTop + 15, Palette.ACCENT);
-        graphics.drawString(font, stateLabel(), margin, menuTop + 20, Palette.MUTED, false);
+        for (int separatorY : separators) {
+            graphics.fill(contentX, separatorY, menuRight, separatorY + 1, Palette.RULE);
+        }
 
         switch (panel) {
             case PLAYERS -> renderPlayers(graphics);
@@ -164,124 +218,107 @@ public class LobbyScreen extends Screen {
             case SETTINGS -> renderSettings(graphics);
         }
 
-        graphics.fill(margin, height - 30, width - margin, height - 29, 0x40B9922F);
-        graphics.drawString(font, "ECHAP ferme le menu  -  M le rouvre  -  C les classes",
-                margin, height - 22, Palette.MUTED, false);
+        // Pied de page
+        graphics.fill(contentX, footerY, contentX + contentW, footerY + 1, 0x55B9922F);
+        label(graphics, "ECHAP ferme le menu     M le rouvre     C les classes",
+                contentX, footerY + 8, Palette.MUTED);
 
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void renderPlayers(GuiGraphics graphics) {
-        int y = menuTop;
-        String header = "JOUEURS : " + ClientMatchState.players.size() + " / " + ClientMatchState.maxPlayers;
-        graphics.drawString(font, header, rightX, y, Palette.MUTED, false);
-        y += 14;
+    // ------------------------------------------------------------- panneaux
 
+    private void renderPlayers(GuiGraphics graphics) {
+        int y = panelHeader(graphics, "JOUEURS   " + ClientMatchState.players.size()
+                + " / " + ClientMatchState.maxPlayers);
         if (ClientMatchState.players.isEmpty()) {
-            graphics.drawString(font, "En attente de connexions", rightX, y + 6, Palette.MUTED, false);
+            body(graphics, "En attente de connexions", panelX, y + 4, Palette.MUTED);
             return;
         }
-        int rowW = Math.min(300, rightWidth);
         for (WarfareNetwork.MatchState.Entry entry : ClientMatchState.players) {
-            if (y > height - 60) break;
+            if (y + 22 > footerY - 6) break;
             boolean me = minecraft != null && minecraft.player != null
                     && entry.name().equals(minecraft.player.getGameProfile().getName());
-            graphics.fill(rightX, y, rightX + rowW, y + 18, me ? 0x40B9922F : 0x55101309);
-            int accent = teamColor(entry.team());
-            graphics.fill(rightX, y, rightX + 2, y + 18, accent);
-            graphics.drawString(font, entry.name(), rightX + 8, y + 5,
-                    me ? Palette.ACCENT : Palette.TEXT, false);
-            String right = ClientMatchState.running()
-                    ? entry.score() + " elim."
-                    : "niv. " + entry.score();
-            graphics.drawString(font, right, rightX + rowW - 10 - font.width(right), y + 5,
-                    Palette.MUTED, false);
-            y += 20;
+            graphics.fill(panelX, y, panelX + panelW, y + 20, me ? 0x3AB9922F : 0x40000000);
+            graphics.fill(panelX, y, panelX + 3, y + 20, teamColor(entry.team()));
+            body(graphics, entry.name(), panelX + 12, y + 6, me ? Palette.ACCENT : Palette.TEXT);
+            String value = ClientMatchState.running()
+                    ? entry.score() + " ELIM." : "NIV. " + entry.score();
+            body(graphics, value, panelX + panelW - 12 - Fonts.width(font, value), y + 6, Palette.MUTED);
+            y += 23;
         }
     }
 
     private void renderModes(GuiGraphics graphics) {
-        graphics.drawString(font, "MODE DE JEU", rightX, menuTop, Palette.MUTED, false);
+        panelHeader(graphics, "MODE DE JEU");
         GameMode selected = GameMode.byId(ClientMatchState.mode);
-        int y = menuTop + 16 + GameMode.values().length * 22 + 6;
-        graphics.drawString(font, selected.title(), rightX, y, Palette.ACCENT, false);
-        graphics.drawString(font, selected.description(), rightX, y + 12, Palette.TEXT, false);
-        graphics.drawString(font, ClientMatchState.scoreLimit + " points  -  "
-                        + ClientMatchState.matchSeconds / 60 + " min",
-                rightX, y + 24, Palette.MUTED, false);
+        int y = bodyY + 22 + GameMode.values().length * 22 + 14;
+        body(graphics, selected.title(), panelX, y, Palette.ACCENT);
+        body(graphics, selected.description(), panelX, y + 14, Palette.TEXT);
+        body(graphics, ClientMatchState.scoreLimit + " points     "
+                + ClientMatchState.matchSeconds / 60 + " min", panelX, y + 28, Palette.MUTED);
     }
 
     private void renderMaps(GuiGraphics graphics) {
-        graphics.drawString(font, "CARTE", rightX, menuTop, Palette.MUTED, false);
+        panelHeader(graphics, "CARTE");
         if (ClientMatchState.arenas.isEmpty()) {
-            graphics.drawString(font, "Aucune carte enregistree.", rightX, menuTop + 20,
-                    Palette.TEXT, false);
-            graphics.drawString(font, "Un operateur doit faire", rightX, menuTop + 34,
-                    Palette.MUTED, false);
-            graphics.drawString(font, "/warfare arena create <nom>", rightX, menuTop + 46,
-                    Palette.MUTED, false);
+            body(graphics, "Aucune carte enregistree.", panelX, bodyY + 26, Palette.TEXT);
+            body(graphics, "Un operateur doit faire", panelX, bodyY + 42, Palette.MUTED);
+            body(graphics, "/warfare arena create <nom>", panelX, bodyY + 54, Palette.ACCENT);
             return;
         }
-        int y = menuTop + 16 + ClientMatchState.arenas.size() * 22 + 6;
-        graphics.drawString(font, "Carte active : " + ClientMatchState.arena.toUpperCase(Locale.ROOT),
-                rightX, y, Palette.ACCENT, false);
+        int y = bodyY + 22 + ClientMatchState.arenas.size() * 22 + 12;
+        body(graphics, "Carte active : " + ClientMatchState.arena.toUpperCase(Locale.ROOT),
+                panelX, y, Palette.ACCENT);
     }
 
     private void renderRanking(GuiGraphics graphics) {
-        int y = menuTop;
-        graphics.drawString(font, "CLASSEMENT DU SERVEUR", rightX, y, Palette.MUTED, false);
-        y += 16;
+        int y = panelHeader(graphics, "CLASSEMENT DU SERVEUR");
         if (ClientMatchState.leaderboard.isEmpty()) {
-            graphics.drawString(font, "Aucune partie enregistree.", rightX, y, Palette.TEXT, false);
+            body(graphics, "Aucune partie enregistree.", panelX, y + 4, Palette.TEXT);
             return;
         }
-        int rowW = Math.min(320, rightWidth);
         int rank = 1;
         for (WarfareNetwork.Leaderboard.Row row : ClientMatchState.leaderboard) {
-            if (y > height - 50) break;
-            graphics.drawString(font, "#" + rank, rightX, y, Palette.MUTED, false);
-            graphics.drawString(font, row.name(), rightX + 22, y, Palette.TEXT, false);
-            String level = "niv." + row.level() + (row.prestige() > 0 ? " P" + row.prestige() : "");
-            graphics.drawString(font, level, rightX + rowW - 150 - font.width(level), y,
-                    Palette.ACCENT, false);
+            if (y + 16 > footerY - 6) break;
+            if (rank % 2 == 1) graphics.fill(panelX, y - 3, panelX + panelW, y + 12, 0x26000000);
+            body(graphics, "#" + rank, panelX + 6, y, Palette.MUTED);
+            body(graphics, row.name(), panelX + 34, y, Palette.TEXT);
+
+            String score = row.score() + " PTS";
             String kd = row.kills() + "/" + row.deaths();
-            graphics.drawString(font, kd, rightX + rowW - 90 - font.width(kd), y, Palette.TEXT, false);
-            String score = row.score() + " pts";
-            graphics.drawString(font, score, rightX + rowW - font.width(score), y, Palette.MUTED, false);
-            y += 12;
+            String level = "NIV." + row.level() + (row.prestige() > 0 ? " P" + row.prestige() : "");
+            int rightEdge = panelX + panelW - 8;
+            body(graphics, score, rightEdge - Fonts.width(font, score), y, Palette.MUTED);
+            body(graphics, kd, rightEdge - 72 - Fonts.width(font, kd), y, Palette.TEXT);
+            body(graphics, level, rightEdge - 130 - Fonts.width(font, level), y, Palette.ACCENT);
+            y += 15;
             rank++;
         }
     }
 
     private void renderProfile(GuiGraphics graphics) {
-        int y = menuTop;
-        graphics.drawString(font, "MON PROFIL", rightX, y, Palette.MUTED, false);
-        y += 16;
-        graphics.drawString(font, Rank.label(ClientMatchState.level, ClientMatchState.prestige),
-                rightX, y, Palette.ACCENT, false);
-        y += 16;
+        int y = panelHeader(graphics, "MON PROFIL");
+        Fonts.drawTracked(graphics, font, Rank.label(ClientMatchState.level, ClientMatchState.prestige)
+                .toUpperCase(Locale.ROOT), panelX, y, Palette.ACCENT, 1, 1.25f);
+        y += 24;
 
-        int barWidth = Math.min(220, rightWidth);
+        int barWidth = Math.min(260, panelW);
         long need = Math.max(1, ClientMatchState.xpToNext);
         int filled = (int) Math.min(barWidth, ClientMatchState.xpIntoLevel * barWidth / need);
-        graphics.fill(rightX, y, rightX + barWidth, y + 6, 0xFF101309);
-        graphics.fill(rightX, y, rightX + filled, y + 6, Palette.ACCENT);
-        y += 12;
-        graphics.drawString(font, ClientMatchState.xpIntoLevel + " / " + need + " XP",
-                rightX, y, Palette.MUTED, false);
-        y += 20;
-        if (ClientMatchState.level >= Rank.MAX_LEVEL) {
-            graphics.drawString(font, "Niveau maximum atteint.", rightX, y, Palette.TEXT, false);
-        } else {
-            graphics.drawString(font, "Prochain grade : " + Rank.title(ClientMatchState.level + 1),
-                    rightX, y, Palette.TEXT, false);
-        }
+        graphics.fill(panelX, y, panelX + barWidth, y + 7, 0x60000000);
+        graphics.fill(panelX, y, panelX + filled, y + 7, Palette.ACCENT);
+        y += 13;
+        body(graphics, ClientMatchState.xpIntoLevel + " / " + need + " XP", panelX, y, Palette.MUTED);
+        y += 24;
+        body(graphics, ClientMatchState.level >= Rank.MAX_LEVEL
+                        ? "Niveau maximum atteint."
+                        : "Prochain grade : " + Rank.title(ClientMatchState.level + 1),
+                panelX, y, Palette.TEXT);
     }
 
     private void renderSettings(GuiGraphics graphics) {
-        int y = menuTop;
-        graphics.drawString(font, "REGLAGES DE PARTIE", rightX, y, Palette.MUTED, false);
-        y += 16;
+        int y = panelHeader(graphics, "REGLAGES DE PARTIE");
         String[][] rows = {
                 {"Mode", ClientMatchState.modeTitle()},
                 {"Carte", ClientMatchState.arena.isEmpty()
@@ -291,23 +328,38 @@ public class LobbyScreen extends Screen {
                         + ClientMatchState.matchSeconds % 60 + " s"},
                 {"Joueurs connectes", ClientMatchState.players.size() + " / " + ClientMatchState.maxPlayers},
         };
-        int rowW = Math.min(300, rightWidth);
         for (String[] row : rows) {
-            graphics.drawString(font, row[0], rightX, y, Palette.MUTED, false);
-            graphics.drawString(font, row[1], rightX + rowW - font.width(row[1]), y, Palette.TEXT, false);
+            body(graphics, row[0], panelX, y, Palette.MUTED);
+            body(graphics, row[1], panelX + panelW - Fonts.width(font, row[1]), y, Palette.TEXT);
             y += 13;
-            graphics.fill(rightX, y, rightX + rowW, y + 1, 0x3346523F);
-            y += 9;
+            graphics.fill(panelX, y, panelX + panelW, y + 1, 0x33FFFFFF);
+            y += 11;
         }
-        graphics.drawString(font, "Details dans config/warfare-common.toml", rightX, y + 6,
-                Palette.MUTED, false);
+        body(graphics, "Details dans config/warfare-common.toml", panelX, y + 8, Palette.MUTED);
+    }
+
+    // -------------------------------------------------------------- helpers
+
+    /** Intitule de panneau : interlettre, souligne, et renvoie le haut du contenu. */
+    private int panelHeader(GuiGraphics graphics, String text) {
+        Fonts.drawTracked(graphics, font, text, panelX, bodyY - 16, Palette.MUTED, 2, 1.0f);
+        graphics.fill(panelX, bodyY - 4, panelX + panelW, bodyY - 3, Palette.RULE);
+        return bodyY + 6;
+    }
+
+    private void body(GuiGraphics graphics, String text, int x, int y, int color) {
+        graphics.drawString(font, Fonts.ui(text), x, y, color, false);
+    }
+
+    private void label(GuiGraphics graphics, String text, int x, int y, int color) {
+        graphics.drawString(font, Fonts.ui(text), x, y, color, false);
     }
 
     private static int teamColor(String team) {
         return switch (team) {
             case "alpha" -> 0xFFD24A3A;
             case "bravo" -> 0xFF3FA9C9;
-            default -> Palette.BORDER;
+            default -> 0x66FFFFFF;
         };
     }
 

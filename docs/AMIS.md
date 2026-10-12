@@ -21,7 +21,21 @@ Minecraft 1.20.1 moddé a besoin de Java 17.
 
 Installe-le en laissant toutes les options par défaut.
 
-## 2. Installer Prism Launcher
+## 2. Choisir ton lanceur
+
+Deux chemins possibles, les deux marchent :
+
+| | Prism Launcher | Launcher officiel Mojang |
+|---|---|---|
+| Fichier a demander | `MinecraftWarfare-Prism.zip` | `MinecraftWarfare-LauncherOfficiel.zip` |
+| Mises a jour des mods | **automatiques** a chaque lancement | tu double-cliques `mettre-a-jour` |
+| Installation | import en 3 clics | creer une installation Forge a la main |
+
+**Prism est plus simple et se met a jour tout seul** : c'est celui a prendre si tu n'as
+pas de preference. Si tu tiens au launcher officiel, saute cette section et suis le
+`LISEZ-MOI.txt` fourni dans ton archive, puis reviens a la section 5.
+
+## 2 bis. Installer Prism Launcher
 
 [prismlauncher.org/download](https://prismlauncher.org/download/) — c'est gratuit et open source.
 

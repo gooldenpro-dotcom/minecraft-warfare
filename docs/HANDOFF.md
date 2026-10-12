@@ -3,7 +3,32 @@
 > **A relire au debut de chaque session, et a mettre a jour a la fin.**
 > Derniere mise a jour : 12 octobre 2026, fin de la session « modes multi + menu ».
 
-## En cours — 0.7.1, non commite
+## Partir d'un clone neuf
+
+Le depot ne contient ni l'installation Forge (`server/libraries/`), ni les jars
+(`server/mods/*.jar`, `mod/libs/`) : trop lourds et retelechargeables. Un script les
+reconstruit.
+
+```bash
+git clone https://github.com/gooldenpro-dotcom/minecraft-warfare.git
+cd minecraft-warfare
+./tools/bootstrap.sh
+```
+
+Il verifie Java 17, telecharge TaCZ (empreinte SHA-1 verifiee) dans `server/mods/` et
+`mod/libs/`, installe le serveur Forge 1.20.1-47.4.10, compile le mod et depose le jar
+dans `server/mods/`. Il **n'accepte pas l'EULA Minecraft** a ta place : il t'indique le
+lien et la commande, c'est a toi de decider.
+
+Ensuite `./start.sh`, et cote client `docs/AMIS.md`.
+
+Ce qui n'est volontairement pas partage par git : `server/config/` (reglages locaux),
+les donnees de joueurs, les logs, et `server/*/warfare/` (lobby, arenes, classes,
+statistiques). Chacun a donc ses propres arenes : si on veut les memes, il faut
+refaire `/warfare arena create` de son cote.
+
+
+## Historique reecrit le 12/10/2026
 
 Police et habillage du menu (voir CHANGELOG 0.7.1). Compile, deploye dans
 `server/mods/`, `pack/mods/` et l'instance Prism, serveur demarre proprement

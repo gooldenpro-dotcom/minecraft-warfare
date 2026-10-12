@@ -683,7 +683,7 @@ Le depot local est deja initialise et le premier commit est fait. Il reste a le 
 
 ```bash
 cd ~/Documents/minecraft-warfare/pack
-git remote add origin https://github.com/TON-PSEUDO/minecraft-warfare-pack.git
+# le remote est deja configure
 git push -u origin main
 ```
 
@@ -693,7 +693,7 @@ GitHub te demandera un identifiant : utilise un **personal access token** comme 
 L'URL du pack devient alors :
 
 ```
-https://raw.githubusercontent.com/TON-PSEUDO/minecraft-warfare-pack/main/pack.toml
+https://raw.githubusercontent.com/gooldenpro-dotcom/minecraft-warfare-pack/main/pack.toml
 ```
 
 Verifie-la dans un navigateur : tu dois voir le contenu de `pack.toml` en texte brut.
@@ -703,11 +703,11 @@ au lieu de `raw.githubusercontent.com`.
 ### 13.4 L'instance Prism a envoyer a tes amis
 
 ```bash
-./tools/build-prism-instance.sh TON-PSEUDO minecraft-warfare-pack
+./tools/build-prism-instance.sh gooldenpro-dotcom minecraft-warfare-pack
 ```
 
-Produit `dist/MinecraftWarfare-Prism.zip`. **Relance cette commande avec ton vrai pseudo** :
-le zip actuel contient une URL de remplacement.
+Produit `dist/MinecraftWarfare-Prism.zip`, deja genere avec ton URL. A relancer seulement si
+tu changes de pseudo ou de nom de depot.
 
 Le zip contient :
 
@@ -863,9 +863,8 @@ redirection de port, qui sera toujours meilleure.
 - [ ] L'URL `https://raw.githubusercontent.com/<pseudo>/minecraft-warfare-pack/main/pack.toml`
       affiche du texte brut dans un navigateur
 - [ ] `mods/warfare-0.4.0.jar` est bien visible sur GitHub (c'est le seul jar du depot)
-- [ ] `./tools/build-prism-instance.sh <pseudo> minecraft-warfare-pack` relance avec ton vrai pseudo
-- [ ] Importer `dist/MinecraftWarfare-Prism.zip` dans ton propre Prism, en plus de ton
-      instance de dev, pour tester ce que tes amis recevront
+- [ ] L'instance « Minecraft Warfare » apparait dans Prism (deja placee dans son dossier)
+      et se lance une fois le depot publie
 - [ ] Au lancement, la fenetre de packwiz-installer apparait et les 5 mods arrivent dans
       `.minecraft/mods/`
 - [ ] Le jeu se lance, le menu « Creer une classe » repond a **C**

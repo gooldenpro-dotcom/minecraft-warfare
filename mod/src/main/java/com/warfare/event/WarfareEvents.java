@@ -1,5 +1,6 @@
 package com.warfare.event;
 
+import com.tacz.guns.api.event.common.EntityHurtByGunEvent;
 import com.tacz.guns.api.event.common.EntityKillByGunEvent;
 import com.warfare.Warfare;
 import com.warfare.game.GameManager;
@@ -40,18 +41,23 @@ public final class WarfareEvents {
         MinecraftServer server = event.getServer();
         // Filet de securite : si l'evenement de config n'a pas ete recu, on relit ici.
         com.warfare.WarfareConfig.reload();
+        com.warfare.game.Teams.ensure(server);
+        GameManager.get().ensureDefaultArena(server);
         WarfareData data = WarfareData.get(server);
-        Warfare.LOGGER.info("Warfare pret : lobby={} points d'apparition={} | {} joueur(s) min, {} elim., {} s",
-                data.getLobby() == null ? "non defini" : data.getLobby().describe(), data.getSpawns().size(),
-                com.warfare.WarfareConfig.minPlayers, com.warfare.WarfareConfig.killLimit,
-                com.warfare.WarfareConfig.matchSeconds);
+        Warfare.LOGGER.info("Warfare pret : mode={} carte={} ({} carte(s) enregistree(s))",
+                data.mode().id(), data.currentName().isEmpty() ? "aucune" : data.currentName(),
+                data.arenas().size());
         if (!data.isReady()) {
-            Warfare.LOGGER.warn("Arene incomplete : utiliser /warfare setlobby puis /warfare addspawn");
+            Warfare.LOGGER.warn("Aucune carte jouable : /warfare arena create <nom>, "
+                    + "puis /warfare setlobby et /warfare addspawn");
         }
+        GameManager.get().cleanMobs(server);
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        com.warfare.progression.StatsStore.saveAll(event.getServer());
+        com.warfare.progression.StatsStore.clearCache();
         ClassStore.clearCache();
     }
 
@@ -128,11 +134,36 @@ public final class WarfareEvents {
         }
     }
 
-    /** Invincibilite au lobby, pendant l'ecran de fin et a la reapparition. */
+    /** Invincibilite au lobby, pendant l'ecran de fin, a la reapparition, et tir allie. */
     @SubscribeEvent
     public static void onAttack(LivingAttackEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (GameManager.get().isInvulnerable(player.getUUID())) event.setCanceled(true);
+        if (GameManager.get().isInvulnerable(player.getUUID())) {
+            event.setCanceled(true);
+            return;
+        }
+        if (event.getSource().getEntity() instanceof ServerPlayer attacker
+                && GameManager.get().isFriendly(attacker.getUUID(), player.getUUID())) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * Degats des balles : multiplicateur du mode (elimination en un coup) et tir allie.
+     * PerkEffects applique en plus les atouts sur ce meme evenement.
+     */
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void onHurtByGun(EntityHurtByGunEvent.Pre event) {
+        if (event.getLogicalSide() != LogicalSide.SERVER) return;
+        if (!(event.getAttacker() instanceof ServerPlayer attacker)) return;
+        if (event.getHurtEntity() instanceof ServerPlayer victim
+                && GameManager.get().isFriendly(attacker.getUUID(), victim.getUUID())) {
+            event.setBaseAmount(0);
+            event.setHeadshot(false);
+            return;
+        }
+        double multiplier = GameManager.get().damageMultiplier();
+        if (multiplier != 1.0) event.setBaseAmount((float) (event.getBaseAmount() * multiplier));
     }
 
     private WarfareEvents() {}

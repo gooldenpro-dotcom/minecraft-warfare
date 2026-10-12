@@ -4,6 +4,8 @@ import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAmmo;
 import com.tacz.guns.api.item.IGun;
 import com.warfare.WarfareConfig;
+import com.warfare.game.Spot;
+import com.warfare.game.Team;
 import com.warfare.game.WarfareData;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -166,7 +168,7 @@ public final class StreakEffects {
      * de la config. Sans point d'apparition, un simple disque autour de l'auteur.
      */
     public static AABB arena(MinecraftServer server, Vec3 fallback) {
-        List<WarfareData.Spot> spawns = WarfareData.get(server).getSpawns();
+        List<Spot> spawns = WarfareData.get(server).spawnsFor(Team.NONE);
         int margin = WarfareConfig.carpetMargin;
         if (spawns.isEmpty()) {
             return new AABB(fallback.x - margin, fallback.y - 8, fallback.z - margin,
@@ -174,7 +176,7 @@ public final class StreakEffects {
         }
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, minZ = Double.MAX_VALUE;
         double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
-        for (WarfareData.Spot spot : spawns) {
+        for (Spot spot : spawns) {
             minX = Math.min(minX, spot.x());
             minY = Math.min(minY, spot.y());
             minZ = Math.min(minZ, spot.z());

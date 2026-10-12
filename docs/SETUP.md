@@ -874,3 +874,52 @@ redirection de port, qui sera toujours meilleure.
 - [ ] Rendre le serveur accessible (section 14), puis demander a **un** ami de tester avant
       d'envoyer le zip a tout le monde
 - [ ] `dist/MinecraftWarfare-1.0.0.mrpack` s'importe aussi dans Prism (secours)
+
+---
+
+# Commandes du mod (version 0.7.0)
+
+Toutes les commandes demandent le niveau operateur (`/op <pseudo>` depuis la console).
+
+## Parties
+
+| Commande | Effet |
+|---|---|
+| `/warfare start` | lance le compte a rebours |
+| `/warfare stop` | arrete la partie, retour au menu |
+| `/warfare mode <mode>` | change de mode : `tdm`, `ffa`, `jeu_d_armes`, `une_balle`, `1v1_sniper`, `1v1` |
+| `/warfare reload` | relit `config/warfare-common.toml` |
+
+## Cartes (arenes)
+
+| Commande | Effet |
+|---|---|
+| `/warfare arena create <nom>` | cree une carte et place son lobby la ou tu es |
+| `/warfare arena list` | liste les cartes, leurs points et si elles sont pretes |
+| `/warfare arena select <nom>` | change la carte jouee |
+| `/warfare arena delete <nom>` | supprime une carte |
+| `/warfare setlobby` | deplace le lobby de la carte courante |
+| `/warfare addspawn` | ajoute un point d'apparition libre |
+| `/warfare addspawn alpha` / `bravo` | ajoute un point reserve a un camp (modes par equipe) |
+| `/warfare listspawns` | liste les points de la carte courante |
+| `/warfare removespawn <n>` | supprime le point numero n |
+
+Une carte est jouable des qu'elle a un lobby et au moins un point d'apparition ; les
+modes par equipe exigent au moins un point `alpha` et un point `bravo`.
+
+## Progression
+
+| Commande | Effet |
+|---|---|
+| `/warfare stats [joueur]` | grade, niveau, XP, eliminations, ratio, victoires |
+| `/warfare top` | classement du serveur |
+| `/warfare xp <joueur> <montant>` | donne de l'XP |
+| `/warfare setlevel <joueur> <niveau>` | force un niveau (1-70) |
+
+Le prestige se declenche depuis le menu (MON PROFIL), au niveau 70.
+
+## Touches en jeu
+
+- **M** : menu d'accueil (modes, cartes, classement, profil, quitter)
+- **C** : creation de classe
+- **Echap** : ferme le menu

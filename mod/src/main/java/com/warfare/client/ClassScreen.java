@@ -4,6 +4,7 @@ import com.warfare.loadout.ClassLoadout;
 import com.warfare.loadout.GunCatalog;
 import com.warfare.loadout.Perk;
 import com.warfare.loadout.PlayerClasses;
+import com.warfare.progression.Unlocks;
 import com.warfare.net.WarfareNetwork;
 import com.warfare.streak.Killstreak;
 import net.minecraft.client.Minecraft;
@@ -55,6 +56,9 @@ public class ClassScreen extends Screen {
     @Nullable
     private String typeFilter;
     private int scroll;
+
+    @Nullable
+    private String locked;
 
     private List<GunCatalog.Entry> catalog = List.of();
     private List<String> types = List.of();
@@ -201,13 +205,17 @@ public class ClassScreen extends Screen {
         for (int category = 1; category <= Perk.CATEGORIES; category++) {
             int x = contentX;
             for (Perk perk : Perk.ofCategory(category)) {
-                WarButton button = new WarButton(x, y, 168, 16,
-                        Component.literal(trim(perk.title(), 22)), () -> {
+                boolean unlocked = Unlocks.perkUnlocked(perk, ClientClassData.unlockLevel);
+                String label = unlocked ? trim(perk.title(), 22)
+                        : trim(perk.title(), 14) + " [NIV." + Unlocks.perkLevel(perk) + "]";
+                WarButton button = new WarButton(x, y, 168, 16, Component.literal(label), () -> {
                     draft = draft.withPerk(perk);
                     rebuildWidgets();
                 });
                 button.selected = draft.has(perk);
-                button.setTooltip(Tooltip.create(Component.literal(perk.description())));
+                button.enabled(unlocked);
+                button.setTooltip(Tooltip.create(Component.literal(unlocked ? perk.description()
+                        : "Debloque au niveau " + Unlocks.perkLevel(perk))));
                 addRenderableWidget(button);
                 x += 172;
             }
@@ -218,14 +226,19 @@ public class ClassScreen extends Screen {
     private void buildStreaksTab() {
         int y = top + 70;
         for (Killstreak streak : Killstreak.sorted()) {
-            WarButton button = new WarButton(contentX, y, 190, 18,
-                    Component.literal(streak.threshold() + " — " + trim(streak.title(), 20)),
+            boolean unlocked = Unlocks.streakUnlocked(streak, ClientClassData.unlockLevel);
+            String label = unlocked
+                    ? streak.threshold() + " — " + trim(streak.title(), 20)
+                    : trim(streak.title(), 16) + " [NIV." + Unlocks.streakLevel(streak) + "]";
+            WarButton button = new WarButton(contentX, y, 190, 18, Component.literal(label),
                     () -> {
                         draft = draft.withStreakToggled(streak);
                         rebuildWidgets();
                     });
             button.selected = draft.has(streak);
-            button.setTooltip(Tooltip.create(Component.literal(streak.description())));
+            button.enabled(unlocked);
+            button.setTooltip(Tooltip.create(Component.literal(unlocked ? streak.description()
+                    : "Debloque au niveau " + Unlocks.streakLevel(streak))));
             addRenderableWidget(button);
             y += 24;
         }
@@ -271,8 +284,11 @@ public class ClassScreen extends Screen {
         graphics.fill(left + 1, top + 1, left + PANEL_W - 1, top + 19, C_INSET);
         graphics.fill(left + 1, top + 19, left + PANEL_W - 1, top + 20, C_ACCENT);
         graphics.drawString(font, "CREER UNE CLASSE", left + 8, top + 6, C_ACCENT, false);
-        graphics.drawString(font, "emplacement " + (editingSlot + 1) + "/" + PlayerClasses.SLOTS,
-                left + PANEL_W - 125, top + 6, C_MUTED, false);
+        String header = "niveau " + ClientClassData.level
+                + (ClientClassData.prestige > 0 ? " - P" + ClientClassData.prestige : "")
+                + "   emplacement " + (editingSlot + 1) + "/" + PlayerClasses.SLOTS;
+        graphics.drawString(font, header, left + PANEL_W - 30 - font.width(header), top + 6,
+                C_MUTED, false);
 
         graphics.fill(left + 1, top + 20, left + SIDEBAR_W, top + PANEL_H - 1, C_INSET);
         graphics.vLine(left + SIDEBAR_W, top + 20, top + PANEL_H - 1, C_BORDER);
@@ -298,6 +314,9 @@ public class ClassScreen extends Screen {
         graphics.drawString(font, trim(gunLabel(draft.secondaryGun()), 20), sideX, top + 110, C_TEXT, false);
         graphics.drawString(font, "molette : defiler", sideX, top + 136, C_MUTED, false);
         graphics.drawString(font, "clic : choisir", sideX, top + 147, C_MUTED, false);
+        if (locked != null) {
+            graphics.drawString(font, trim(locked, 26), sideX, top + 165, 0xFFB4534A, false);
+        }
 
         graphics.fill(listX, listY, listX + listW, listY + listH, C_INSET);
         outline(graphics, listX, listY, listW, listH, C_BORDER);
@@ -314,6 +333,8 @@ public class ClassScreen extends Screen {
             boolean chosen = entry.gunId().equals(current);
             boolean hovered = mouseX >= listX && mouseX < listX + listW && mouseY >= y && mouseY < y + ROW_H;
 
+            boolean unlocked = Unlocks.gunUnlocked(entry.gunId(), ClientClassData.unlockLevel);
+
             if (chosen) {
                 graphics.fill(listX + 1, y, listX + listW - 1, y + ROW_H, C_SELECTED);
                 graphics.fill(listX + 1, y, listX + 3, y + ROW_H, C_ACCENT);
@@ -321,9 +342,11 @@ public class ClassScreen extends Screen {
                 graphics.fill(listX + 1, y, listX + listW - 1, y + ROW_H, 0xFF20241D);
             }
             graphics.drawString(font, trim(nameOf(entry), 22), listX + 7, y + 2,
-                    chosen ? C_ACCENT : C_TEXT, false);
-            String type = GunCatalog.typeShort(entry.type());
-            graphics.drawString(font, type, listX + listW - 10 - font.width(type), y + 2, C_MUTED, false);
+                    !unlocked ? 0xFF6A5252 : chosen ? C_ACCENT : C_TEXT, false);
+            String right = unlocked ? GunCatalog.typeShort(entry.type())
+                    : "NIV. " + Unlocks.gunLevel(entry.gunId());
+            graphics.drawString(font, right, listX + listW - 10 - font.width(right), y + 2,
+                    unlocked ? C_MUTED : 0xFFB4534A, false);
         }
         graphics.disableScissor();
 
@@ -380,6 +403,11 @@ public class ClassScreen extends Screen {
             List<GunCatalog.Entry> visible = filtered();
             if (row >= 0 && row < visible.size()) {
                 String gunId = visible.get(row).gunId();
+                if (!Unlocks.gunUnlocked(gunId, ClientClassData.unlockLevel)) {
+                    locked = "Debloquee au niveau " + Unlocks.gunLevel(gunId);
+                    return true;
+                }
+                locked = null;
                 draft = editingPrimary ? draft.withPrimary(gunId) : draft.withSecondary(gunId);
                 rebuildWidgets();
                 return true;

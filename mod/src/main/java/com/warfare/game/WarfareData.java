@@ -1,115 +1,180 @@
 package com.warfare.game;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
- * Lobby et points d'apparition, sauvegardes avec le monde (world/data/warfare.dat).
+ * Les arenes du serveur et celle qui est selectionnee, sauvegardees avec le monde
+ * (world/data/warfare.dat).
+ *
+ * L'ancien format (un lobby + une liste de points, sans arene) est relu et converti
+ * en une arene nommee "defaut" au premier chargement.
  */
 public class WarfareData extends SavedData {
     private static final String NAME = "warfare";
 
-    /** Une position orientee dans une dimension. */
-    public record Spot(ResourceKey<Level> dimension, double x, double y, double z, float yaw, float pitch) {
-        public static Spot of(ServerPlayer player) {
-            return new Spot(player.level().dimension(), player.getX(), player.getY(), player.getZ(),
-                    player.getYRot(), player.getXRot());
-        }
+    private final Map<String, Arena> arenas = new LinkedHashMap<>();
+    private String selected = "";
 
-        public CompoundTag write() {
-            CompoundTag t = new CompoundTag();
-            t.putString("dim", dimension.location().toString());
-            t.putDouble("x", x);
-            t.putDouble("y", y);
-            t.putDouble("z", z);
-            t.putFloat("yaw", yaw);
-            t.putFloat("pitch", pitch);
-            return t;
-        }
-
-        public static Spot read(CompoundTag t) {
-            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(t.getString("dim")));
-            return new Spot(dim, t.getDouble("x"), t.getDouble("y"), t.getDouble("z"),
-                    t.getFloat("yaw"), t.getFloat("pitch"));
-        }
-
-        @Nullable
-        public ServerLevel level(MinecraftServer server) {
-            return server.getLevel(dimension);
-        }
-
-        public String describe() {
-            return String.format("%s %.1f %.1f %.1f", dimension.location(), x, y, z);
-        }
-    }
-
-    @Nullable
-    private Spot lobby;
-    private final List<Spot> spawns = new ArrayList<>();
+    /** Le mode de jeu choisi pour la prochaine partie, conserve entre deux redemarrages. */
+    private String mode = "";
 
     public static WarfareData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(WarfareData::load, WarfareData::new, NAME);
     }
 
+    // --------------------------------------------------------------- arenes
+
+    public List<Arena> arenas() {
+        return List.copyOf(arenas.values());
+    }
+
+    public List<String> arenaNames() {
+        return List.copyOf(arenas.keySet());
+    }
+
     @Nullable
-    public Spot getLobby() {
-        return lobby;
+    public Arena arena(String name) {
+        return arenas.get(key(name));
     }
 
-    public void setLobby(Spot spot) {
-        this.lobby = spot;
-        setDirty();
+    /** L'arene selectionnee, ou la premiere disponible, ou null si aucune n'existe. */
+    @Nullable
+    public Arena current() {
+        Arena arena = arenas.get(selected);
+        if (arena != null) return arena;
+        return arenas.isEmpty() ? null : arenas.values().iterator().next();
     }
 
-    public List<Spot> getSpawns() {
-        return List.copyOf(spawns);
+    public String currentName() {
+        Arena arena = current();
+        return arena == null ? "" : arena.name();
     }
 
-    public int addSpawn(Spot spot) {
-        spawns.add(spot);
-        setDirty();
-        return spawns.size();
+    /** Cree l'arene si elle n'existe pas et la renvoie. */
+    public Arena getOrCreate(String name) {
+        String key = key(name);
+        Arena arena = arenas.get(key);
+        if (arena == null) {
+            arena = new Arena(key);
+            arenas.put(key, arena);
+            if (selected.isEmpty()) selected = key;
+            setDirty();
+        }
+        return arena;
     }
 
-    /** @return true si l'index existait. */
-    public boolean removeSpawn(int index) {
-        if (index < 0 || index >= spawns.size()) return false;
-        spawns.remove(index);
+    public boolean select(String name) {
+        String key = key(name);
+        if (!arenas.containsKey(key)) return false;
+        selected = key;
         setDirty();
         return true;
     }
 
-    public boolean isReady() {
-        return lobby != null && !spawns.isEmpty();
+    public boolean delete(String name) {
+        String key = key(name);
+        if (arenas.remove(key) == null) return false;
+        if (selected.equals(key)) selected = arenas.isEmpty() ? "" : arenas.keySet().iterator().next();
+        setDirty();
+        return true;
     }
+
+    /** A appeler apres toute modification d'une arene recuperee par reference. */
+    public void touch() {
+        setDirty();
+    }
+
+    // ----------------------------------------------------------------- mode
+
+    public GameMode mode() {
+        return mode.isEmpty() ? GameMode.defaultMode() : GameMode.byId(mode);
+    }
+
+    public void setMode(GameMode value) {
+        this.mode = value.id();
+        setDirty();
+    }
+
+    // ------------------------------------------------------- raccourcis jeu
+
+    @Nullable
+    public Spot getLobby() {
+        Arena arena = current();
+        return arena == null ? null : arena.lobby();
+    }
+
+    public List<Spot> spawnsFor(Team team) {
+        Arena arena = current();
+        return arena == null ? List.of() : arena.spawnsFor(team);
+    }
+
+    public boolean isReady() {
+        Arena arena = current();
+        return arena != null && arena.isReady();
+    }
+
+    public boolean isReadyFor(GameMode mode) {
+        Arena arena = current();
+        return arena != null && arena.isReadyFor(mode);
+    }
+
+    // -------------------------------------------------------- serialisation
 
     @Override
     public CompoundTag save(CompoundTag tag) {
-        if (lobby != null) tag.put("lobby", lobby.write());
         ListTag list = new ListTag();
-        for (Spot s : spawns) list.add(s.write());
-        tag.put("spawns", list);
+        for (Arena arena : arenas.values()) list.add(arena.write());
+        tag.put("arenas", list);
+        tag.putString("selected", selected);
+        tag.putString("mode", mode);
         return tag;
     }
 
     public static WarfareData load(CompoundTag tag) {
         WarfareData data = new WarfareData();
-        if (tag.contains("lobby")) data.lobby = Spot.read(tag.getCompound("lobby"));
-        ListTag list = tag.getList("spawns", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) data.spawns.add(Spot.read(list.getCompound(i)));
+        if (tag.contains("arenas")) {
+            ListTag list = tag.getList("arenas", Tag.TAG_COMPOUND);
+            for (int i = 0; i < list.size(); i++) {
+                Arena arena = Arena.read(list.getCompound(i));
+                if (!arena.name().isEmpty()) data.arenas.put(arena.name(), arena);
+            }
+            data.selected = tag.getString("selected");
+        } else {
+            // Ancien format : un seul lobby et une liste de points sans equipe.
+            Arena arena = new Arena("defaut");
+            if (tag.contains("lobby")) arena.setLobby(Spot.read(tag.getCompound("lobby")));
+            ListTag list = tag.getList("spawns", Tag.TAG_COMPOUND);
+            List<Spot> spots = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) spots.add(Spot.read(list.getCompound(i)));
+            for (Spot spot : spots) arena.add(Team.NONE, spot);
+            if (arena.lobby() != null || !spots.isEmpty()) {
+                data.arenas.put(arena.name(), arena);
+                data.selected = arena.name();
+            }
+        }
+        data.mode = tag.getString("mode");
+        if (!data.arenas.containsKey(data.selected)) {
+            data.selected = data.arenas.isEmpty() ? "" : data.arenas.keySet().iterator().next();
+        }
         return data;
+    }
+
+    /** Nom d'arene normalise : minuscules, sans espace ni ponctuation. */
+    public static String key(String name) {
+        String cleaned = name.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9_-]+", "_")
+                .replaceAll("_{2,}", "_");
+        return cleaned.replaceAll("^_+", "").replaceAll("_+$", "");
     }
 }

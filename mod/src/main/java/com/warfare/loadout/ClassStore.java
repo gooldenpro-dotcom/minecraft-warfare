@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.warfare.Warfare;
 import com.warfare.WarfareConfig;
+import com.warfare.progression.Unlocks;
 import com.warfare.streak.Killstreak;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -122,33 +123,55 @@ public final class ClassStore {
 
     /**
      * Validation serveur : rien de ce qui vient du client n'est repris tel quel.
-     * Nom borne et nettoye, armes verifiees contre le catalogue, atouts forcement valides.
+     * Nom borne et nettoye, armes verifiees contre le catalogue, atouts forcement valides,
+     * et tout ce qui n'est pas encore debloque a ce niveau est remplace.
+     *
+     * @param level niveau de deblocage du joueur (voir Unlocks.effectiveLevel)
      */
-    public static ClassLoadout sanitize(ClassLoadout incoming, int slot) {
+    public static ClassLoadout sanitize(ClassLoadout incoming, int slot, int level) {
         String name = incoming.name() == null ? "" : incoming.name().replaceAll("[\\p{Cntrl}§]", "").trim();
         if (name.length() > ClassLoadout.MAX_NAME_LENGTH) name = name.substring(0, ClassLoadout.MAX_NAME_LENGTH);
         if (name.isBlank()) name = "Classe " + (slot + 1);
 
-        String primary = validGun(incoming.primaryGun(), WarfareConfig.primaryGun);
-        String secondary = validGun(incoming.secondaryGun(), WarfareConfig.secondaryGun);
+        String primary = validGun(incoming.primaryGun(), WarfareConfig.primaryGun, level);
+        String secondary = validGun(incoming.secondaryGun(), WarfareConfig.secondaryGun, level);
 
         List<Perk> perks = List.of(
-                valid(incoming.perk(1), 1),
-                valid(incoming.perk(2), 2),
-                valid(incoming.perk(3), 3));
-        // streaksNormalized garantit 3 killstreaks distinctes et existantes
-        return new ClassLoadout(name, primary, secondary, perks, incoming.streaksNormalized());
+                valid(incoming.perk(1), 1, level),
+                valid(incoming.perk(2), 2, level),
+                valid(incoming.perk(3), 3, level));
+
+        List<Killstreak> streaks = new java.util.ArrayList<>();
+        for (Killstreak streak : incoming.streaksNormalized()) {
+            if (Unlocks.streakUnlocked(streak, level)) streaks.add(streak);
+        }
+        for (Killstreak streak : Killstreak.sorted()) {
+            if (streaks.size() >= Killstreak.EQUIPPED) break;
+            if (!streaks.contains(streak) && Unlocks.streakUnlocked(streak, level)) streaks.add(streak);
+        }
+        return new ClassLoadout(name, primary, secondary, perks, List.copyOf(streaks));
     }
 
-    private static Perk valid(Perk perk, int category) {
-        return perk != null && perk.category() == category ? perk : Perk.defaultOf(category);
+    /** Valide une classe deja enregistree, sans contrainte de niveau (chargement disque). */
+    public static ClassLoadout sanitize(ClassLoadout incoming, int slot) {
+        return sanitize(incoming, slot, com.warfare.progression.Rank.MAX_LEVEL);
     }
 
-    private static String validGun(String gunId, String fallback) {
-        if (gunId != null && GunCatalog.isAllowed(gunId)) return gunId;
-        if (GunCatalog.isAllowed(fallback)) return fallback;
-        List<GunCatalog.Entry> all = GunCatalog.all();
-        return all.isEmpty() ? fallback : all.get(0).gunId();
+    private static Perk valid(Perk perk, int category, int level) {
+        if (perk != null && perk.category() == category && Unlocks.perkUnlocked(perk, level)) return perk;
+        for (Perk candidate : Perk.ofCategory(category)) {
+            if (Unlocks.perkUnlocked(candidate, level)) return candidate;
+        }
+        return Perk.defaultOf(category);
+    }
+
+    private static String validGun(String gunId, String fallback, int level) {
+        if (gunId != null && GunCatalog.isAllowed(gunId) && Unlocks.gunUnlocked(gunId, level)) return gunId;
+        if (GunCatalog.isAllowed(fallback) && Unlocks.gunUnlocked(fallback, level)) return fallback;
+        for (GunCatalog.Entry entry : GunCatalog.all()) {
+            if (Unlocks.gunUnlocked(entry.gunId(), level)) return entry.gunId();
+        }
+        return fallback;
     }
 
     private ClassStore() {}

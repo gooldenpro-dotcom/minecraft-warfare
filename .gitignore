@@ -54,3 +54,14 @@ tools/packwiz
 pack/
 # artefacts d'export
 dist/
+
+# --- Donnees de jeu du monde embarque (la carte elle-meme reste suivie) ---
+server/*/playerdata/
+server/*/stats/
+server/*/advancements/
+server/*/warfare/
+server/*/data/
+server/*/DIM-1/
+server/*/DIM1/
+server/*/session.lock
+server/*/level.dat_old

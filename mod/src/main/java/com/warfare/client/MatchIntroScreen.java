@@ -40,8 +40,10 @@ public class MatchIntroScreen extends Screen {
         graphics.fill(0, 0, width, height, 0xF00A0B08);
 
         int right = width - 40;
-        drawScaled(graphics, "CHACUN POUR SOI", right, 46, 2.0f, Palette.ACCENT, true);
-        drawScaled(graphics, ClientMatchState.mapName, right, 70, 1.6f, Palette.TEXT, true);
+        drawScaled(graphics, ClientMatchState.modeTitle().toUpperCase(java.util.Locale.ROOT),
+                right, 46, 2.0f, Palette.ACCENT, true);
+        drawScaled(graphics, ClientMatchState.arena.toUpperCase(java.util.Locale.ROOT),
+                right, 70, 1.6f, Palette.TEXT, true);
         String waiting = ClientMatchState.state.equals("COUNTDOWN")
                 ? "Preparation de la partie..." : "Partie en cours";
         graphics.drawString(font, waiting, right - font.width(waiting), 94, Palette.MUTED, false);

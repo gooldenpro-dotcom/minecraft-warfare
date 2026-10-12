@@ -12,11 +12,18 @@ public final class ClientClassData {
     public static PlayerClasses classes = new PlayerClasses();
     public static List<String> allowedGuns = List.of();
     public static boolean menuAllowed = false;
+    /** Niveau qui sert aux deblocages (calcule par le serveur, prestige compris). */
+    public static int unlockLevel = 1;
+    public static int level = 1;
+    public static int prestige;
 
     public static void accept(WarfareNetwork.SyncClasses msg) {
         classes = msg.classes();
         allowedGuns = msg.allowedGuns();
         menuAllowed = msg.menuAllowed();
+        unlockLevel = msg.unlockLevel();
+        level = msg.level();
+        prestige = msg.prestige();
     }
 
     /** Catalogue local filtre par la liste blanche recue du serveur. */

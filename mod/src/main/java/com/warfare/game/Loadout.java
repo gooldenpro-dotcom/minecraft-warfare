@@ -50,6 +50,38 @@ public final class Loadout {
     }
 
     /**
+     * Equipement impose par un mode : une seule arme, sans atout.
+     *
+     * @param magazines chargeurs de rechange donnes dans l'inventaire
+     * @param startAmmo balles dans le chargeur au depart ; -1 = chargeur plein
+     */
+    public static void giveSingle(ServerPlayer player, String gunIdStr, int magazines, int startAmmo) {
+        player.getInventory().clearContent();
+        ResourceLocation gunId = ResourceLocation.tryParse(gunIdStr);
+        if (gunId == null) {
+            Warfare.LOGGER.warn("Identifiant d'arme invalide : {}", gunIdStr);
+            return;
+        }
+        Optional<CommonGunIndex> index = TimelessAPI.getCommonGunIndex(gunId);
+        if (index.isEmpty()) {
+            Warfare.LOGGER.warn("Arme TaCZ inconnue : {} (verifier les packs charges)", gunId);
+            player.sendSystemMessage(com.warfare.util.Txt.info(
+                    Component.literal("Arme TaCZ inconnue : " + gunId)));
+            return;
+        }
+        int magSize = Math.max(1, index.get().getGunData().getAmmoAmount());
+        int loaded = startAmmo < 0 ? magSize : Math.min(startAmmo, magSize);
+        // makeGun chambre toujours une balle : le chargeur en contient une de moins.
+        ItemStack gun = makeGun(gunId, Math.max(0, loaded - 1), null);
+        if (!gun.isEmpty()) player.getInventory().setItem(0, gun);
+        if (magazines > 0) giveAmmo(player, index.get().getGunData().getAmmoId(), magSize * magazines);
+
+        player.getInventory().selected = 0;
+        player.inventoryMenu.broadcastChanges();
+        ActivePerks.clear(player);
+    }
+
+    /**
      * L'emplacement {@link com.warfare.streak.StreakItems#SLOT} est reserve aux recompenses
      * de killstreak : si des munitions y ont atterri, on les deplace dans l'inventaire.
      */

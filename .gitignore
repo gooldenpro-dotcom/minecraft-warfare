@@ -37,3 +37,12 @@ server/eula.txt
 
 # --- macOS ---
 .DS_Store
+
+# --- Mod warfare ---
+# Le wrapper Gradle doit rester suivi malgre la regle *.jar ci-dessus
+!mod/gradle/wrapper/gradle-wrapper.jar
+# Dependance TaCZ copiee pour la compilation (voir docs/SETUP.md)
+mod/libs/
+mod/build/
+mod/.gradle/
+mod/run/

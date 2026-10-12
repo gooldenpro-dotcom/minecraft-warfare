@@ -46,3 +46,11 @@ mod/libs/
 mod/build/
 mod/.gradle/
 mod/run/
+
+# --- Distribution (etape 5) ---
+# packwiz : binaire de 12 Mo, retelechargeable
+tools/packwiz
+# pack/ est son propre depot git, publie separement (voir docs/SETUP.md 13.3)
+pack/
+# artefacts d'export
+dist/

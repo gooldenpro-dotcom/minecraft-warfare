@@ -608,3 +608,270 @@ cocher ou decocher. Au-dela de 3, la plus anciennement cochee sort automatiqueme
 - [ ] `/warfare stop` en pleine partie -> les tourelles posees disparaissent
 - [ ] Changer `droneThreshold` a 2 + `/warfare reload` -> le menu affiche `2` pour le drone
 - [ ] Console serveur : aucune ligne `ERROR` pendant toute la session
+
+## 13. Distribution du pack avec packwiz (etape 5)
+
+### 13.1 packwiz est installe dans `tools/`
+
+packwiz n'a **aucune release taguee** et n'est pas dans Homebrew. Les deux voies officielles
+sont les binaires de CI et la compilation depuis les sources.
+
+Le binaire installe ici vient de la source officielle indiquee par le README de packwiz
+(`nightly.link/packwiz/packwiz/workflows/go/main`). **Il n'existe qu'en x86_64** : sur ton Mac
+Apple Silicon il tourne via Rosetta, ce qui fonctionne et n'a demande aucune installation.
+
+```bash
+./tools/packwiz list        # verifier que packwiz repond
+```
+
+Si un jour Rosetta pose probleme, la version native se compile en deux commandes :
+
+```bash
+brew install go
+go install github.com/packwiz/packwiz@latest   # binaire dans ~/go/bin/packwiz
+```
+
+`tools/packwiz` est ignore par git (12 Mo de binaire) : sur une autre machine, retelecharge-le.
+
+### 13.2 Ce que contient `pack/`
+
+```
+pack/
+├── pack.toml                              # Minecraft 1.20.1 + Forge 47.4.10
+├── index.toml                             # liste et empreintes de tous les fichiers
+├── README.md
+└── mods/
+    ├── timeless-and-classics-zero.pw.toml  # metafichier -> telecharge depuis Modrinth
+    ├── embeddium.pw.toml                   # metafichier
+    ├── ferrite-core.pw.toml                # metafichier
+    ├── modernfix.pw.toml                   # metafichier
+    └── warfare-0.4.0.jar                   # fichier reel, servi par ton depot GitHub
+```
+
+Deux sortes d'entrees :
+
+- un **metafichier** `.pw.toml` ne contient qu'un identifiant Modrinth, une URL et une
+  empreinte. Le jar n'est jamais dans ton depot : c'est le client qui le prend chez Modrinth.
+- le mod `warfare` n'est publie nulle part, donc son **jar est dans le depot** et les clients
+  le telechargent depuis GitHub. C'est la facon normale de distribuer un mod prive avec packwiz.
+
+| Mod | Version | Role |
+|---|---|---|
+| TaCZ | 1.1.8-hotfix2 (epinglee) | armes |
+| warfare | 0.4.0 | le mode de jeu |
+| Embeddium | 0.3.31+mc1.20.1 | FPS (le Sodium de Forge) |
+| FerriteCore | 6.0.1-forge | moins de RAM |
+| ModernFix | 5.27.88+mc1.20.1 | demarrage plus rapide |
+
+**Pas de shaders.** Oculus provoque des crashs documentes en tenant une arme TaCZ
+(MCModderAnchor/TACZ #250, Asek3/Oculus #678). Embeddium seul est la configuration avec
+laquelle l'addon de performance officiel de TaCZ publie ses propres benchmarks.
+
+### 13.3 Creer le depot GitHub public
+
+`pack/` est **son propre depot git**, separe du projet principal (qui l'ignore). Comme ca le
+depot public ne contient que le pack, et l'URL du pack reste courte.
+
+Le depot local est deja initialise et le premier commit est fait. Il reste a le mettre en ligne.
+
+1. Va sur [github.com/new](https://github.com/new)
+2. **Repository name** : `minecraft-warfare-pack`
+3. **Public** (obligatoire : les clients telechargent sans authentification)
+4. **Ne coche rien** — pas de README, pas de .gitignore, pas de licence : le dossier en a deja un
+5. **Create repository**
+6. Puis, dans un terminal :
+
+```bash
+cd ~/Documents/minecraft-warfare/pack
+git remote add origin https://github.com/TON-PSEUDO/minecraft-warfare-pack.git
+git push -u origin main
+```
+
+GitHub te demandera un identifiant : utilise un **personal access token** comme mot de passe
+(Settings → Developer settings → Tokens), pas ton mot de passe de compte.
+
+L'URL du pack devient alors :
+
+```
+https://raw.githubusercontent.com/TON-PSEUDO/minecraft-warfare-pack/main/pack.toml
+```
+
+Verifie-la dans un navigateur : tu dois voir le contenu de `pack.toml` en texte brut.
+Si tu vois une page GitHub avec des boutons, c'est que tu as pris l'URL `github.com`
+au lieu de `raw.githubusercontent.com`.
+
+### 13.4 L'instance Prism a envoyer a tes amis
+
+```bash
+./tools/build-prism-instance.sh TON-PSEUDO minecraft-warfare-pack
+```
+
+Produit `dist/MinecraftWarfare-Prism.zip`. **Relance cette commande avec ton vrai pseudo** :
+le zip actuel contient une URL de remplacement.
+
+Le zip contient :
+
+```
+instance.cfg                              # dont la commande de pre-lancement
+mmc-pack.json                             # Minecraft 1.20.1 + Forge 47.4.10
+.minecraft/packwiz-installer-bootstrap.jar
+```
+
+La ligne qui fait tout le travail, dans `instance.cfg` :
+
+```
+OverrideCommands=true
+PreLaunchCommand="$INST_JAVA" -jar packwiz-installer-bootstrap.jar "<URL du pack>"
+```
+
+Prism execute cette commande **avant chaque demarrage**, avec `.minecraft` comme dossier
+courant. Le bootstrap recupere packwiz-installer, qui compare `index.toml` aux fichiers
+locaux et ne telecharge que ce qui a change. Tes amis n'ont donc jamais a reinstaller quoi
+que ce soit : ils relancent, c'est a jour.
+
+Tu peux aussi corriger l'URL sans regenerer le zip : dans Prism, instance → **Edit** →
+**Settings** → **Custom commands**.
+
+### 13.5 Le .mrpack
+
+```bash
+cd pack && ../tools/packwiz modrinth export -o ../dist/MinecraftWarfare-1.0.0.mrpack
+```
+
+`dist/MinecraftWarfare-1.0.0.mrpack` est deja genere. Il s'importe dans Prism, l'app Modrinth
+et ATLauncher. Les 4 mods Modrinth sont dans le manifeste, le mod `warfare` est embarque
+dans `overrides/`.
+
+**Difference importante avec l'instance Prism** : le .mrpack est un **instantane**. Il ne se
+met pas a jour tout seul ; il faut en renvoyer un nouveau a chaque changement. Donne-le en
+secours, a quelqu'un qui n'utilise pas Prism par exemple, et privilegie l'instance pour
+tout le monde.
+
+### 13.6 Publier une mise a jour
+
+Apres avoir recompile le mod :
+
+```bash
+cd ~/Documents/minecraft-warfare
+(cd mod && ./gradlew build)
+cp mod/build/libs/warfare-X.Y.Z.jar server/mods/        # cote serveur
+rm -f server/mods/warfare-<ancienne>.jar
+
+rm -f pack/mods/warfare-*.jar                           # cote pack
+cp mod/build/libs/warfare-X.Y.Z.jar pack/mods/
+(cd pack && ../tools/packwiz refresh)
+(cd pack && git add -A && git commit -m "pack: warfare X.Y.Z" && git push)
+```
+
+`packwiz refresh` est **obligatoire** : c'est lui qui recalcule `index.toml`, et c'est l'index
+que lisent les clients. Sans refresh, tes amis gardent l'ancien jar et se font refuser avec
+`Incompatible mod set`.
+
+Mettre a jour les mods Modrinth :
+
+```bash
+cd pack
+../tools/packwiz update --all     # ou: ../tools/packwiz update embeddium
+git add -A && git commit -m "pack: mise a jour des mods" && git push
+```
+
+Attention : ne mets **jamais** a jour TaCZ dans le pack sans mettre a jour le serveur en
+meme temps, et sans recompiler `warfare` contre la nouvelle version (`mod/libs/`).
+
+## 14. Rendre le serveur accessible a tes amis
+
+**Je n'ai rien touche sur ton reseau.** Les deux options ci-dessous sont a faire par toi.
+
+Rappel : `server.properties` a `server-ip=` vide, donc le serveur ecoute deja sur toutes les
+interfaces de ta machine, et `server-port=25565`. Au premier lancement, macOS peut demander
+d'autoriser Java a accepter les connexions entrantes : il faut accepter.
+
+### 14.1 Option A — redirection de port sur ta box
+
+La plus rapide et la meilleure en latence, mais elle expose un port de ta machine a Internet.
+
+1. **Fixer l'adresse locale du Mac.** Trouve-la :
+
+   ```bash
+   ipconfig getifaddr en0 || ipconfig getifaddr en1
+   ```
+
+   Puis, dans l'interface de ta box, reserve cette adresse pour ton Mac (bail DHCP statique) —
+   sinon elle changera et la redirection pointera dans le vide.
+
+2. **Creer la redirection.** Interface d'administration de la box (souvent `http://192.168.1.1`,
+   section « NAT/PAT », « Redirection de ports » ou « Port forwarding ») :
+
+   | Champ | Valeur |
+   |---|---|
+   | Port externe | `25565` |
+   | Port interne | `25565` |
+   | Protocole | **TCP** |
+   | IP de destination | l'adresse locale de ton Mac |
+
+3. **Trouver ton adresse publique** : `curl -s https://api.ipify.org`
+   C'est cette adresse que tu donnes a tes amis.
+
+4. **Verifier depuis l'exterieur** : [portchecktool.com](https://www.portchecktool.com/) sur le
+   port 25565, serveur demarre. Un test depuis ton propre reseau ne prouve rien.
+
+Les limites a connaitre :
+
+- **CGNAT** : beaucoup d'abonnements fibre et toutes les box 4G/5G partagent une adresse
+  publique entre plusieurs clients. Dans ce cas la redirection ne peut pas fonctionner, quoi
+  que tu configures. Si l'adresse publique de l'etape 3 ne correspond pas a celle affichee
+  dans l'interface de ta box, tu es derriere un CGNAT → passe a l'option B.
+- **Adresse dynamique** : la plupart des FAI changent l'adresse publique regulierement.
+  Tes amis devront la remettre a jour, sauf si tu utilises un DNS dynamique (DuckDNS, No-IP).
+- **Exposition** : n'importe qui scannant Internet trouvera le port. `online-mode=true` est
+  deja actif, donc seuls des comptes Minecraft authentifies peuvent se connecter — c'est la
+  protection qui compte. Tu peux aussi passer `white-list=true` et ajouter tes amis avec
+  `whitelist add <pseudo>` dans la console.
+- Ton adresse IP publique devient visible de tes amis.
+
+### 14.2 Option B — playit.gg
+
+Un tunnel : un agent sur ta machine ouvre une connexion **sortante** vers playit.gg, qui te
+donne une adresse publique. **Aucune configuration de box, fonctionne derriere un CGNAT.**
+L'offre gratuite suffit pour un serveur Minecraft entre amis.
+
+1. Cree un compte sur [playit.gg](https://playit.gg/)
+2. Installe l'agent : `brew install --cask playit` (ou le `.pkg` depuis leur site)
+3. Lance-le, il affiche un lien a ouvrir pour associer l'agent a ton compte
+4. Dans leur interface web : **Add Tunnel** → **Minecraft Java** → local address
+   `127.0.0.1` port `25565`
+5. playit te donne une adresse du type `warfare-xxxx.gl.joinmc.link` : c'est elle que tes amis
+   mettent dans Minecraft
+
+Les limites a connaitre :
+
+- **Latence** : le trafic fait un detour par un relais playit. Compte quelques dizaines de ms
+  en plus. Choisis la region la plus proche dans leur interface.
+- **Dependance** : si playit.gg est en panne, personne ne se connecte.
+- L'agent doit tourner en meme temps que ton serveur.
+
+### 14.3 Lequel choisir
+
+Commence par **playit.gg**. Rien a configurer, rien d'expose, et ca marche meme derriere un
+CGNAT — tu sauras en 5 minutes si ca suffit. Si la latence te gene en jeu, bascule sur la
+redirection de port, qui sera toujours meilleure.
+
+## 15. Checklist de distribution
+
+- [ ] `./tools/packwiz list` repond (4 mods Modrinth listes)
+- [ ] Depot GitHub public `minecraft-warfare-pack` cree, `git push` passe
+- [ ] L'URL `https://raw.githubusercontent.com/<pseudo>/minecraft-warfare-pack/main/pack.toml`
+      affiche du texte brut dans un navigateur
+- [ ] `mods/warfare-0.4.0.jar` est bien visible sur GitHub (c'est le seul jar du depot)
+- [ ] `./tools/build-prism-instance.sh <pseudo> minecraft-warfare-pack` relance avec ton vrai pseudo
+- [ ] Importer `dist/MinecraftWarfare-Prism.zip` dans ton propre Prism, en plus de ton
+      instance de dev, pour tester ce que tes amis recevront
+- [ ] Au lancement, la fenetre de packwiz-installer apparait et les 5 mods arrivent dans
+      `.minecraft/mods/`
+- [ ] Le jeu se lance, le menu « Creer une classe » repond a **C**
+- [ ] Connexion a `localhost` depuis cette instance importee : aucun `Incompatible mod set`
+- [ ] Modifier une virgule dans le pack, `packwiz refresh`, `git push`, relancer l'instance :
+      le fichier se met a jour tout seul
+- [ ] Rendre le serveur accessible (section 14), puis demander a **un** ami de tester avant
+      d'envoyer le zip a tout le monde
+- [ ] `dist/MinecraftWarfare-1.0.0.mrpack` s'importe aussi dans Prism (secours)

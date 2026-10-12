@@ -30,6 +30,28 @@ public final class WarfareConfig {
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXTRA_ITEMS;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> GUN_WHITELIST;
 
+    // --- Killstreaks ---
+    private static final ForgeConfigSpec.BooleanValue STREAKS_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue STREAK_KILLS_COUNT;
+    private static final ForgeConfigSpec.IntValue DRONE_THRESHOLD;
+    private static final ForgeConfigSpec.IntValue DRONE_SECONDS;
+    private static final ForgeConfigSpec.IntValue RESUPPLY_THRESHOLD;
+    private static final ForgeConfigSpec.IntValue AIRSTRIKE_THRESHOLD;
+    private static final ForgeConfigSpec.IntValue AIRSTRIKE_DELAY;
+    private static final ForgeConfigSpec.IntValue AIRSTRIKE_BOMBS;
+    private static final ForgeConfigSpec.IntValue AIRSTRIKE_SPREAD;
+    private static final ForgeConfigSpec.DoubleValue AIRSTRIKE_POWER;
+    private static final ForgeConfigSpec.IntValue TURRET_THRESHOLD;
+    private static final ForgeConfigSpec.IntValue TURRET_SECONDS;
+    private static final ForgeConfigSpec.IntValue TURRET_RANGE;
+    private static final ForgeConfigSpec.IntValue TURRET_INTERVAL;
+    private static final ForgeConfigSpec.DoubleValue TURRET_DAMAGE;
+    private static final ForgeConfigSpec.IntValue CARPET_THRESHOLD;
+    private static final ForgeConfigSpec.IntValue CARPET_SECONDS;
+    private static final ForgeConfigSpec.IntValue CARPET_BOMBS;
+    private static final ForgeConfigSpec.IntValue CARPET_MARGIN;
+    private static final ForgeConfigSpec.DoubleValue CARPET_POWER;
+
     // --- Affichage ---
     private static final ForgeConfigSpec.BooleanValue SHOW_GUN_IN_KILLFEED;
     private static final ForgeConfigSpec.BooleanValue ANNOUNCE_HEADSHOTS;
@@ -72,6 +94,46 @@ public final class WarfareConfig {
                 .defineListAllowEmpty(List.of("gunWhitelist"), List::of, o -> o instanceof String);
         B.pop();
 
+        B.comment("Series d'eliminations (killstreaks).",
+                "Chaque joueur en choisit 3 dans le menu de classe.",
+                "Aucune explosion du mod ne casse de blocs.").push("killstreaks");
+        STREAKS_ENABLED = B.define("enabled", true);
+        STREAK_KILLS_COUNT = B.comment("Les eliminations faites AVEC une killstreak comptent-elles dans la serie ?",
+                        "false = comportement attendu : seules les eliminations a l'arme font monter la serie.")
+                .define("streakKillsCountTowardStreak", false);
+
+        DRONE_THRESHOLD = B.comment("Drone de reperage : ennemis en surbrillance").defineInRange("droneThreshold", 3, 1, 100);
+        DRONE_SECONDS = B.defineInRange("droneSeconds", 15, 1, 300);
+
+        RESUPPLY_THRESHOLD = B.comment("Ravitaillement : munitions pleines + bonus aleatoire")
+                .defineInRange("resupplyThreshold", 4, 1, 100);
+
+        AIRSTRIKE_THRESHOLD = B.comment("Frappe aerienne : salve d'explosions sur un point designe")
+                .defineInRange("airstrikeThreshold", 5, 1, 100);
+        AIRSTRIKE_DELAY = B.comment("Delai entre la designation et l'impact, en secondes")
+                .defineInRange("airstrikeDelaySeconds", 5, 1, 60);
+        AIRSTRIKE_BOMBS = B.comment("Nombre d'explosions dans la salve").defineInRange("airstrikeBombs", 9, 1, 100);
+        AIRSTRIKE_SPREAD = B.comment("Rayon de dispersion de la salve, en blocs").defineInRange("airstrikeSpread", 8, 1, 64);
+        AIRSTRIKE_POWER = B.comment("Puissance de chaque explosion (4.0 = TNT)").defineInRange("airstrikePower", 3.0, 0.5, 20.0);
+
+        TURRET_THRESHOLD = B.comment("Tourelle sentinelle : tire sur les ennemis proches")
+                .defineInRange("turretThreshold", 7, 1, 100);
+        TURRET_SECONDS = B.defineInRange("turretSeconds", 30, 1, 300);
+        TURRET_RANGE = B.comment("Portee de detection, en blocs").defineInRange("turretRange", 20, 1, 128);
+        TURRET_INTERVAL = B.comment("Intervalle entre deux tirs, en ticks (20 ticks = 1 s)")
+                .defineInRange("turretIntervalTicks", 15, 5, 200);
+        TURRET_DAMAGE = B.comment("Degats par tir").defineInRange("turretDamage", 4.0, 0.5, 40.0);
+
+        CARPET_THRESHOLD = B.comment("Bombardement : frappes sur toute l'arene")
+                .defineInRange("carpetThreshold", 11, 1, 100);
+        CARPET_SECONDS = B.defineInRange("carpetSeconds", 10, 1, 120);
+        CARPET_BOMBS = B.comment("Nombre total d'explosions etalees sur la duree")
+                .defineInRange("carpetBombs", 30, 1, 400);
+        CARPET_MARGIN = B.comment("Marge ajoutee autour de la zone des points d'apparition, en blocs")
+                .defineInRange("carpetMargin", 20, 0, 200);
+        CARPET_POWER = B.comment("Puissance de chaque explosion").defineInRange("carpetPower", 3.0, 0.5, 20.0);
+        B.pop();
+
         B.comment("Affichage et messages").push("display");
         SHOW_GUN_IN_KILLFEED = B.define("showGunInKillfeed", true);
         ANNOUNCE_HEADSHOTS = B.define("announceHeadshots", true);
@@ -97,6 +159,26 @@ public final class WarfareConfig {
     public static int secondaryMagazines = 4;
     public static List<? extends String> extraItems = List.of();
     public static List<? extends String> gunWhitelist = List.of();
+    public static boolean streaksEnabled = true;
+    public static boolean streakKillsCount = false;
+    public static int droneThreshold = 3;
+    public static int droneSeconds = 15;
+    public static int resupplyThreshold = 4;
+    public static int airstrikeThreshold = 5;
+    public static int airstrikeDelay = 5;
+    public static int airstrikeBombs = 9;
+    public static int airstrikeSpread = 8;
+    public static double airstrikePower = 3.0;
+    public static int turretThreshold = 7;
+    public static int turretSeconds = 30;
+    public static int turretRange = 20;
+    public static int turretInterval = 15;
+    public static double turretDamage = 4.0;
+    public static int carpetThreshold = 11;
+    public static int carpetSeconds = 10;
+    public static int carpetBombs = 30;
+    public static int carpetMargin = 20;
+    public static double carpetPower = 3.0;
     public static boolean showGunInKillfeed = true;
     public static boolean announceHeadshots = true;
     public static boolean manageGameRules = true;
@@ -126,6 +208,26 @@ public final class WarfareConfig {
         secondaryMagazines = SECONDARY_MAGAZINES.get();
         extraItems = EXTRA_ITEMS.get();
         gunWhitelist = GUN_WHITELIST.get();
+        streaksEnabled = STREAKS_ENABLED.get();
+        streakKillsCount = STREAK_KILLS_COUNT.get();
+        droneThreshold = DRONE_THRESHOLD.get();
+        droneSeconds = DRONE_SECONDS.get();
+        resupplyThreshold = RESUPPLY_THRESHOLD.get();
+        airstrikeThreshold = AIRSTRIKE_THRESHOLD.get();
+        airstrikeDelay = AIRSTRIKE_DELAY.get();
+        airstrikeBombs = AIRSTRIKE_BOMBS.get();
+        airstrikeSpread = AIRSTRIKE_SPREAD.get();
+        airstrikePower = AIRSTRIKE_POWER.get();
+        turretThreshold = TURRET_THRESHOLD.get();
+        turretSeconds = TURRET_SECONDS.get();
+        turretRange = TURRET_RANGE.get();
+        turretInterval = TURRET_INTERVAL.get();
+        turretDamage = TURRET_DAMAGE.get();
+        carpetThreshold = CARPET_THRESHOLD.get();
+        carpetSeconds = CARPET_SECONDS.get();
+        carpetBombs = CARPET_BOMBS.get();
+        carpetMargin = CARPET_MARGIN.get();
+        carpetPower = CARPET_POWER.get();
         showGunInKillfeed = SHOW_GUN_IN_KILLFEED.get();
         announceHeadshots = ANNOUNCE_HEADSHOTS.get();
         manageGameRules = MANAGE_GAMERULES.get();

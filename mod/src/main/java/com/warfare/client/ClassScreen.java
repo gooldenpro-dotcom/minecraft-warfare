@@ -5,6 +5,8 @@ import com.warfare.loadout.GunCatalog;
 import com.warfare.loadout.Perk;
 import com.warfare.loadout.PlayerClasses;
 import com.warfare.net.WarfareNetwork;
+import com.warfare.streak.Killstreak;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
@@ -19,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Menu "Creer une classe".
+ * Menu "Creer une classe" : armes, atouts et killstreaks, en trois onglets.
  *
  * Habillage entierement dessine a la main (aplats sombres, liseres olive et ambre) :
  * aucune texture, aucun son et aucun visuel repris d'un jeu existant.
@@ -39,9 +41,13 @@ public class ClassScreen extends Screen {
     private static final int C_MUTED = 0xFF76806F;
     private static final int C_SELECTED = 0xFF2B3526;
 
+    private enum Tab { WEAPONS, PERKS, STREAKS }
+
     private int left;
     private int top;
+    private int contentX;
 
+    private Tab tab = Tab.WEAPONS;
     private int editingSlot;
     @Nullable
     private ClassLoadout draft;
@@ -52,8 +58,6 @@ public class ClassScreen extends Screen {
 
     private List<GunCatalog.Entry> catalog = List.of();
     private List<String> types = List.of();
-    @Nullable
-    private EditBox nameBox;
 
     private int listX;
     private int listY;
@@ -70,18 +74,23 @@ public class ClassScreen extends Screen {
     protected void init() {
         left = (width - PANEL_W) / 2;
         top = (height - PANEL_H) / 2;
+        contentX = left + SIDEBAR_W + 8;
 
         catalog = ClientClassData.catalog();
         types = catalog.stream().map(GunCatalog.Entry::type).distinct().toList();
         if (draft == null) draft = ClientClassData.classes.get(editingSlot);
 
-        int contentX = left + SIDEBAR_W + 8;
-        listX = contentX;
-        listY = top + 86;
-        listW = 186;
-        listH = 104;
+        buildSlots();
+        buildHeader();
+        switch (tab) {
+            case WEAPONS -> buildWeaponsTab();
+            case PERKS -> buildPerksTab();
+            case STREAKS -> buildStreaksTab();
+        }
+        buildFooter();
+    }
 
-        // Emplacements de classe
+    private void buildSlots() {
         for (int i = 0; i < PlayerClasses.SLOTS; i++) {
             final int slot = i;
             String label = (ClientClassData.classes.selected() == i ? "▸ " : "  ")
@@ -91,16 +100,42 @@ public class ClassScreen extends Screen {
             button.selected = i == editingSlot;
             addRenderableWidget(button);
         }
+    }
 
-        // Nom de la classe
-        nameBox = new EditBox(font, contentX + 32, top + 24, 140, 14, Component.literal("Nom"));
+    private void buildHeader() {
+        EditBox nameBox = new EditBox(font, contentX + 30, top + 24, 150, 14, Component.literal("Nom"));
         nameBox.setMaxLength(ClassLoadout.MAX_NAME_LENGTH);
         nameBox.setValue(draft.name());
         nameBox.setResponder(value -> draft = draft.withName(value));
         addRenderableWidget(nameBox);
 
-        // Choix de l'arme en cours d'edition
-        WarButton primary = new WarButton(contentX, top + 46, 91, 17,
+        int tabX = contentX;
+        for (Tab value : Tab.values()) {
+            WarButton button = new WarButton(tabX, top + 44, 90, 16, Component.literal(labelOf(value)), () -> {
+                tab = value;
+                rebuildWidgets();
+            });
+            button.selected = tab == value;
+            addRenderableWidget(button);
+            tabX += 92;
+        }
+    }
+
+    private static String labelOf(Tab tab) {
+        return switch (tab) {
+            case WEAPONS -> "ARMES";
+            case PERKS -> "ATOUTS";
+            case STREAKS -> "KILLSTREAKS";
+        };
+    }
+
+    private void buildWeaponsTab() {
+        listX = contentX;
+        listY = top + 114;
+        listW = 200;
+        listH = 84;
+
+        WarButton primary = new WarButton(contentX, top + 66, 98, 16,
                 Component.literal("PRINCIPALE"), () -> {
             editingPrimary = true;
             typeFilter = null;
@@ -108,10 +143,9 @@ public class ClassScreen extends Screen {
             rebuildWidgets();
         });
         primary.selected = editingPrimary;
-        primary.setTooltip(Tooltip.create(gunLabel(draft.primaryGun())));
         addRenderableWidget(primary);
 
-        WarButton secondary = new WarButton(contentX + 95, top + 46, 91, 17,
+        WarButton secondary = new WarButton(contentX + 102, top + 66, 98, 16,
                 Component.literal("SECONDAIRE"), () -> {
             editingPrimary = false;
             typeFilter = null;
@@ -119,12 +153,10 @@ public class ClassScreen extends Screen {
             rebuildWidgets();
         });
         secondary.selected = !editingPrimary;
-        secondary.setTooltip(Tooltip.create(gunLabel(draft.secondaryGun())));
         addRenderableWidget(secondary);
 
-        // Filtres par type d'arme
         int filterX = contentX;
-        WarButton allTypes = new WarButton(filterX, top + 68, 30, 14, Component.literal("Tout"), () -> {
+        WarButton allTypes = new WarButton(filterX, top + 96, 30, 14, Component.literal("Tout"), () -> {
             typeFilter = null;
             scroll = 0;
             rebuildWidgets();
@@ -137,7 +169,7 @@ public class ClassScreen extends Screen {
             int w = Math.max(28, font.width(label) + 8);
             if (filterX + w > contentX + listW) break;
             final String target = type;
-            WarButton button = new WarButton(filterX, top + 68, w, 14, Component.literal(label), () -> {
+            WarButton button = new WarButton(filterX, top + 96, w, 14, Component.literal(label), () -> {
                 typeFilter = target;
                 scroll = 0;
                 rebuildWidgets();
@@ -146,33 +178,49 @@ public class ClassScreen extends Screen {
             addRenderableWidget(button);
             filterX += w + 2;
         }
+    }
 
-        // Atouts
-        int perkX = contentX + listW + 8;
-        int perkW = PANEL_W - SIDEBAR_W - listW - 32;
-        int perkY = top + 96;
+    private void buildPerksTab() {
+        int y = top + 76;
         for (int category = 1; category <= Perk.CATEGORIES; category++) {
-            int slotY = perkY;
+            int x = contentX;
             for (Perk perk : Perk.ofCategory(category)) {
-                WarButton button = new WarButton(perkX, slotY, perkW, 15,
-                        Component.literal(trim(perk.title(), 18)), () -> {
+                WarButton button = new WarButton(x, y, 152, 16,
+                        Component.literal(trim(perk.title(), 22)), () -> {
                     draft = draft.withPerk(perk);
                     rebuildWidgets();
                 });
                 button.selected = draft.has(perk);
                 button.setTooltip(Tooltip.create(Component.literal(perk.description())));
                 addRenderableWidget(button);
-                slotY += 17;
+                x += 156;
             }
-            perkY = slotY + 8;
+            y += 38;
         }
+    }
 
-        // Actions
-        addRenderableWidget(new WarButton(contentX, top + PANEL_H - 26, 90, 18,
+    private void buildStreaksTab() {
+        int y = top + 70;
+        for (Killstreak streak : Killstreak.sorted()) {
+            WarButton button = new WarButton(contentX, y, 170, 18,
+                    Component.literal(streak.threshold() + " — " + trim(streak.title(), 20)),
+                    () -> {
+                        draft = draft.withStreakToggled(streak);
+                        rebuildWidgets();
+                    });
+            button.selected = draft.has(streak);
+            button.setTooltip(Tooltip.create(Component.literal(streak.description())));
+            addRenderableWidget(button);
+            y += 24;
+        }
+    }
+
+    private void buildFooter() {
+        addRenderableWidget(new WarButton(contentX, top + PANEL_H - 26, 98, 18,
                 Component.literal("ENREGISTRER"), this::save));
-        addRenderableWidget(new WarButton(contentX + 94, top + PANEL_H - 26, 90, 18,
+        addRenderableWidget(new WarButton(contentX + 102, top + PANEL_H - 26, 98, 18,
                 Component.literal("EQUIPER"), this::equip));
-        addRenderableWidget(new WarButton(left + PANEL_W - 24, top + 5, 19, 14,
+        addRenderableWidget(new WarButton(left + PANEL_W - 24, top + 4, 19, 14,
                 Component.literal("X"), this::onClose));
     }
 
@@ -202,42 +250,39 @@ public class ClassScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, C_SHADE);
-
-        // Cadre principal
         graphics.fill(left, top, left + PANEL_W, top + PANEL_H, C_PANEL);
         outline(graphics, left, top, PANEL_W, PANEL_H, C_BORDER);
         graphics.fill(left + 1, top + 1, left + PANEL_W - 1, top + 19, C_INSET);
         graphics.fill(left + 1, top + 19, left + PANEL_W - 1, top + 20, C_ACCENT);
         graphics.drawString(font, "CREER UNE CLASSE", left + 8, top + 6, C_ACCENT, false);
         graphics.drawString(font, "emplacement " + (editingSlot + 1) + "/" + PlayerClasses.SLOTS,
-                left + PANEL_W - 110, top + 6, C_MUTED, false);
+                left + PANEL_W - 125, top + 6, C_MUTED, false);
 
-        // Colonne des emplacements
         graphics.fill(left + 1, top + 20, left + SIDEBAR_W, top + PANEL_H - 1, C_INSET);
         graphics.vLine(left + SIDEBAR_W, top + 20, top + PANEL_H - 1, C_BORDER);
-
-        int contentX = left + SIDEBAR_W + 8;
         graphics.drawString(font, "NOM", contentX, top + 27, C_MUTED, false);
 
-        // Resume des armes choisies
-        graphics.drawString(font, trim(gunLabel(draft.primaryGun()).getString(), 22),
-                contentX + 2, top + 64 - 11, C_TEXT, false);
-        graphics.drawString(font, trim(gunLabel(draft.secondaryGun()).getString(), 22),
-                contentX + 97, top + 64 - 11, C_TEXT, false);
+        switch (tab) {
+            case WEAPONS -> renderWeaponsTab(graphics, mouseX, mouseY);
+            case PERKS -> renderPerksTab(graphics);
+            case STREAKS -> renderStreaksTab(graphics);
+        }
 
-        // Liste des armes
-        renderGunList(graphics, mouseX, mouseY);
-
-        // Titre de la colonne des atouts
-        int perkX = contentX + listW + 8;
-        graphics.drawString(font, "ATOUTS", perkX, top + 86, C_ACCENT, false);
         graphics.drawString(font, "Equipee : " + trim(ClientClassData.classes.current().name(), 14),
-                perkX, top + PANEL_H - 22, C_MUTED, false);
+                contentX + 210, top + PANEL_H - 21, C_MUTED, false);
 
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void renderGunList(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderWeaponsTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int sideX = contentX + listW + 8;
+        graphics.drawString(font, "PRINCIPALE", sideX, top + 70, C_MUTED, false);
+        graphics.drawString(font, trim(gunLabel(draft.primaryGun()), 18), sideX, top + 81, C_TEXT, false);
+        graphics.drawString(font, "SECONDAIRE", sideX, top + 99, C_MUTED, false);
+        graphics.drawString(font, trim(gunLabel(draft.secondaryGun()), 18), sideX, top + 110, C_TEXT, false);
+        graphics.drawString(font, "molette :", sideX, top + 134, C_MUTED, false);
+        graphics.drawString(font, "defiler la liste", sideX, top + 145, C_MUTED, false);
+
         graphics.fill(listX, listY, listX + listW, listY + listH, C_INSET);
         outline(graphics, listX, listY, listW, listH, C_BORDER);
 
@@ -262,14 +307,13 @@ public class ClassScreen extends Screen {
             graphics.drawString(font, trim(nameOf(entry), 24), listX + 7, y + 2,
                     chosen ? C_ACCENT : C_TEXT, false);
             graphics.drawString(font, trim(GunCatalog.typeLabel(entry.type()), 10),
-                    listX + listW - 62, y + 2, C_MUTED, false);
+                    listX + listW - 66, y + 2, C_MUTED, false);
         }
         graphics.disableScissor();
 
         if (visible.isEmpty()) {
             graphics.drawString(font, "Aucune arme disponible", listX + 7, listY + 6, C_MUTED, false);
         }
-        // Barre de defilement
         if (visible.size() > maxRows) {
             int trackH = listH - 2;
             int thumbH = Math.max(10, trackH * maxRows / visible.size());
@@ -277,6 +321,30 @@ public class ClassScreen extends Screen {
             graphics.fill(listX + listW - 4, listY + 1, listX + listW - 1, listY + listH - 1, 0xFF14170F);
             graphics.fill(listX + listW - 4, thumbY, listX + listW - 1, thumbY + thumbH, C_BORDER);
         }
+    }
+
+    private void renderPerksTab(GuiGraphics graphics) {
+        int y = top + 66;
+        for (int category = 1; category <= Perk.CATEGORIES; category++) {
+            graphics.drawString(font, "CATEGORIE " + category, contentX, y, C_MUTED, false);
+            graphics.drawString(font, trim(draft.perk(category).description(), 54),
+                    contentX, y + 28, C_TEXT, false);
+            y += 38;
+        }
+    }
+
+    private void renderStreaksTab(GuiGraphics graphics) {
+        graphics.drawString(font, "3 killstreaks par classe - seuil en eliminations consecutives",
+                contentX, top + 60, C_MUTED, false);
+        int y = top + 70;
+        for (Killstreak streak : Killstreak.sorted()) {
+            graphics.drawString(font, trim(streak.description(), 36), contentX + 176, y + 5,
+                    draft.has(streak) ? C_TEXT : C_MUTED, false);
+            y += 24;
+        }
+        int chosen = draft.streaks().size();
+        graphics.drawString(font, "selection : " + chosen + "/" + Killstreak.EQUIPPED,
+                contentX, top + PANEL_H - 44, chosen == Killstreak.EQUIPPED ? C_ACCENT : C_MUTED, false);
     }
 
     private static void outline(GuiGraphics graphics, int x, int y, int w, int h, int color) {
@@ -290,7 +358,7 @@ public class ClassScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && mouseX >= listX && mouseX < listX + listW
+        if (tab == Tab.WEAPONS && button == 0 && mouseX >= listX && mouseX < listX + listW
                 && mouseY >= listY && mouseY < listY + listH) {
             int row = (int) ((mouseY - listY - 1) / ROW_H) + scroll;
             List<GunCatalog.Entry> visible = filtered();
@@ -306,7 +374,8 @@ public class ClassScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (mouseX >= listX && mouseX < listX + listW && mouseY >= listY && mouseY < listY + listH) {
+        if (tab == Tab.WEAPONS && mouseX >= listX && mouseX < listX + listW
+                && mouseY >= listY && mouseY < listY + listH) {
             scroll -= (int) Math.signum(delta);
             return true;
         }
@@ -336,17 +405,16 @@ public class ClassScreen extends Screen {
     }
 
     private static String nameOf(GunCatalog.Entry entry) {
-        Component translated = Component.translatable(entry.nameKey());
-        String text = translated.getString();
+        String text = Component.translatable(entry.nameKey()).getString();
         return text.equals(entry.nameKey()) ? entry.gunId() : text;
     }
 
-    private Component gunLabel(String gunId) {
+    private String gunLabel(String gunId) {
         for (GunCatalog.Entry entry : catalog) {
-            if (entry.gunId().equals(gunId)) return Component.literal(nameOf(entry));
+            if (entry.gunId().equals(gunId)) return nameOf(entry);
         }
         ResourceLocation id = ResourceLocation.tryParse(gunId);
-        return Component.literal(id == null ? gunId : id.getPath());
+        return id == null ? gunId : id.getPath();
     }
 
     private static String trim(String text, int max) {
@@ -371,8 +439,8 @@ public class ClassScreen extends Screen {
             if (selected) graphics.fill(getX(), getY(), getX() + 2, getY() + height, C_ACCENT);
 
             int color = selected ? C_ACCENT : (isHovered() ? 0xFFFFFFFF : C_TEXT);
-            graphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font,
-                    getMessage(), getX() + width / 2, getY() + (height - 8) / 2, color);
+            graphics.drawCenteredString(Minecraft.getInstance().font, getMessage(),
+                    getX() + width / 2, getY() + (height - 8) / 2, color);
         }
 
         @Override

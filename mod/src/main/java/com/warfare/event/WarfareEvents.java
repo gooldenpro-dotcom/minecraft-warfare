@@ -5,12 +5,19 @@ import com.warfare.Warfare;
 import com.warfare.game.GameManager;
 import com.warfare.game.WarfareData;
 import com.warfare.loadout.ClassStore;
+import com.warfare.streak.Killstreak;
+import com.warfare.streak.StreakItems;
+import com.warfare.streak.StreakManager;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -77,6 +84,44 @@ public final class WarfareEvents {
         if (!(event.getKilledEntity() instanceof ServerPlayer victim)) return;
         UUID killer = event.getAttacker() instanceof ServerPlayer p ? p.getUUID() : null;
         GameManager.get().onGunKill(victim.getUUID(), killer, event.getGunId(), event.isHeadShot());
+    }
+
+    // ------------------------------------------------- objets de killstreak
+
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (!StreakItems.isStreakItem(event.getItemStack())) return;
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
+        useStreak(event.getEntity(), event.getItemStack());
+    }
+
+    /**
+     * Plusieurs recompenses sont des items de bloc (coffre, distributeur, TNT) :
+     * sans ce gestionnaire, le clic droit sur un bloc les poserait.
+     */
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!StreakItems.isStreakItem(event.getItemStack())) return;
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
+        useStreak(event.getEntity(), event.getItemStack());
+    }
+
+    private static void useStreak(net.minecraft.world.entity.player.Player rawPlayer, ItemStack stack) {
+        if (!(rawPlayer instanceof ServerPlayer player)) return;   // cote client : on annule seulement
+        Killstreak streak = StreakItems.of(stack);
+        if (streak == null) return;
+
+        if (!GameManager.get().isRunning() || player.isSpectator()) {
+            player.displayClientMessage(
+                    Component.literal("\u00a7cUtilisable uniquement en partie."), true);
+            return;
+        }
+        if (StreakManager.get().activate(player, streak)) {
+            stack.shrink(1);
+            player.inventoryMenu.broadcastChanges();
+        }
     }
 
     /** Invincibilite au lobby, pendant l'ecran de fin et a la reapparition. */

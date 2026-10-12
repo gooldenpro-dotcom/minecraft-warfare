@@ -5,6 +5,7 @@ import com.warfare.loadout.ClassLoadout;
 import com.warfare.loadout.ClassStore;
 import com.warfare.net.WarfareNetwork;
 import com.warfare.perk.ActivePerks;
+import com.warfare.streak.StreakManager;
 import com.warfare.util.Txt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -32,10 +33,12 @@ public final class GameManager {
         @Nullable UUID killer;
         @Nullable ResourceLocation gunId;
         boolean headshot;
+        final boolean fromStreak;
 
-        Death(UUID victim, @Nullable UUID killer) {
+        Death(UUID victim, @Nullable UUID killer, boolean fromStreak) {
             this.victim = victim;
             this.killer = killer;
+            this.fromStreak = fromStreak;
         }
     }
 
@@ -80,7 +83,7 @@ public final class GameManager {
     /** Appele par LivingDeathEvent, avant que TaCZ ne poste son evenement de kill. */
     public void onDeath(ServerPlayer victim, @Nullable UUID killer) {
         deathSpots.put(victim.getUUID(), WarfareData.Spot.of(victim));
-        pending.add(new Death(victim.getUUID(), killer));
+        pending.add(new Death(victim.getUUID(), killer, StreakManager.get().isStreakDamage()));
     }
 
     /** Appele par EntityKillByGunEvent : complete la mort deja enregistree. */
@@ -107,9 +110,13 @@ public final class GameManager {
             deaths.merge(d.victim, 1, Integer::sum);
             String victimName = nameOf(server, d.victim);
 
+            StreakManager.get().onDeath(d.victim);
+
             if (d.killer != null && !d.killer.equals(d.victim)) {
                 int score = kills.merge(d.killer, 1, Integer::sum);
                 announceKill(server, nameOf(server, d.killer), victimName, d.gunId, d.headshot);
+                ServerPlayer killer = server.getPlayerList().getPlayer(d.killer);
+                if (killer != null) StreakManager.get().onKill(killer, d.fromStreak);
                 if (score >= WarfareConfig.killLimit && winner == null) winner = d.killer;
             } else {
                 broadcast(server, Component.empty()
@@ -195,6 +202,7 @@ public final class GameManager {
         tick++;
         stateTicks++;
         flushDeaths(server);
+        if (state == GameState.RUNNING) StreakManager.get().tick(server);
 
         switch (state) {
             case LOBBY -> tickLobby(server);
@@ -324,6 +332,7 @@ public final class GameManager {
         respawnAt.clear();
         protectedUntil.clear();
         pending.clear();
+        StreakManager.get().reset(server);
         applyGameRules(server);
 
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
@@ -343,6 +352,7 @@ public final class GameManager {
         if (state != GameState.RUNNING) return;
         enter(GameState.ENDED);
         respawnAt.clear();
+        StreakManager.get().reset(server);
 
         String winnerName = winner == null ? null : nameOf(server, winner);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
@@ -367,6 +377,7 @@ public final class GameManager {
         enter(GameState.LOBBY);
         respawnAt.clear();
         pending.clear();
+        StreakManager.get().reset(server);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             Sidebar.hide(p);
             Txt.clearTitle(p);

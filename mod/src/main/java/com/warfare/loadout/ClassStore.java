@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.warfare.Warfare;
 import com.warfare.WarfareConfig;
+import com.warfare.streak.Killstreak;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -88,6 +89,9 @@ public final class ClassStore {
         JsonArray perks = new JsonArray();
         for (int category = 1; category <= Perk.CATEGORIES; category++) perks.add(loadout.perk(category).id());
         object.add("perks", perks);
+        JsonArray streaks = new JsonArray();
+        for (Killstreak streak : loadout.streaksNormalized()) streaks.add(streak.id());
+        object.add("streaks", streaks);
         return object;
     }
 
@@ -100,6 +104,17 @@ public final class ClassStore {
             for (var element : object.getAsJsonArray("perks")) {
                 Perk perk = Perk.byId(element.getAsString());
                 if (perk != null) loadout = loadout.withPerk(perk);
+            }
+        }
+        if (object.has("streaks")) {
+            List<Killstreak> streaks = new java.util.ArrayList<>();
+            for (var element : object.getAsJsonArray("streaks")) {
+                Killstreak streak = Killstreak.byId(element.getAsString());
+                if (streak != null && !streaks.contains(streak)) streaks.add(streak);
+            }
+            if (!streaks.isEmpty()) {
+                loadout = new ClassLoadout(loadout.name(), loadout.primaryGun(), loadout.secondaryGun(),
+                        loadout.perks(), List.copyOf(streaks));
             }
         }
         return loadout;
@@ -121,7 +136,8 @@ public final class ClassStore {
                 valid(incoming.perk(1), 1),
                 valid(incoming.perk(2), 2),
                 valid(incoming.perk(3), 3));
-        return new ClassLoadout(name, primary, secondary, perks);
+        // streaksNormalized garantit 3 killstreaks distinctes et existantes
+        return new ClassLoadout(name, primary, secondary, perks, incoming.streaksNormalized());
     }
 
     private static Perk valid(Perk perk, int category) {

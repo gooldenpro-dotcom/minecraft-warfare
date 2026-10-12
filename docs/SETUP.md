@@ -255,13 +255,13 @@ Methode recommandee (sure) :
 
 1. Prism Launcher -> instance `Minecraft Warfare` -> **Edit**
 2. Panneau **Mods** -> **Add file...**
-3. Choisir `~/Documents/minecraft-warfare/mod/build/libs/warfare-0.3.0.jar`
+3. Choisir `~/Documents/minecraft-warfare/mod/build/libs/warfare-0.4.0.jar`
 4. Verifier que `warfare` et `tacz` apparaissent tous les deux, coches
 
 Methode par le dossier, si tu preferes la ligne de commande :
 
 ```bash
-cp ~/Documents/minecraft-warfare/mod/build/libs/warfare-0.3.0.jar \
+cp ~/Documents/minecraft-warfare/mod/build/libs/warfare-0.4.0.jar \
    "$HOME/Library/Application Support/PrismLauncher/instances/Minecraft Warfare/minecraft/mods/"
 ```
 
@@ -394,9 +394,123 @@ Si tu veux les deux atouts d'origine, c'est faisable avec des Mixins dans TaCZ �
 et je le fais dans une etape dediee, en sachant que ca casse potentiellement a chaque mise
 a jour de TaCZ.
 
-## 11. Checklist de tests en jeu
+## 11. Killstreaks (etape 4)
 
-### 11.1 Serveur et client
+### 11.1 Principe
+
+Un compteur d'**eliminations consecutives sans mourir** par joueur. Il repart a zero a chaque
+mort. Par defaut, **les eliminations faites avec une killstreak ne font pas monter la serie** :
+une frappe aerienne qui tue 4 personnes ne debloque pas la killstreak suivante.
+Reglable avec `killstreaks.streakKillsCountTowardStreak`.
+
+La recompense est accordee quand le compteur atteint **exactement** le seuil d'une des
+3 killstreaks equipees sur la classe en cours.
+
+### 11.2 Les cinq killstreaks
+
+| Seuil | Nom | Objet | Effet | Comment c'est fait |
+|---|---|---|---|---|
+| 3 | **Drone de reperage** | Longue-vue | Ennemis en surbrillance 15 s, **visible par toi seul** | Paquet `ClientboundSetEntityDataPacket` envoye au seul proprietaire |
+| 4 | **Ravitaillement** | Coffre | Chargeurs pleins sur toutes tes armes + 1 bonus aleatoire | API TaCZ `IGun.setCurrentAmmoCount` + effet vanilla |
+| 5 | **Frappe aerienne** | Fusee | Tu designes un point, salve de 9 explosions 5 s plus tard | Raycast puis `Level.explode(..., NONE)` |
+| 7 | **Tourelle sentinelle** | Distributeur | Tourelle posee, tire 30 s sur 20 blocs | Porte-armure + degats directs credites a toi |
+| 11 | **Bombardement** | TNT | 30 frappes sur toute l'arene en 10 s | Boite englobante des points d'apparition |
+
+Les 5 bonus possibles du ravitaillement : Absorption, Regeneration, Vitesse, Force, Resistance.
+Le nom du bonus tire est annonce dans ton chat.
+
+La zone du bombardement est la **boite englobante de tes points d'apparition**, elargie de
+`carpetMargin` blocs : c'est donc litteralement l'arene que tu as definie, pas un rayon
+arbitraire. S'il n'y a aucun point d'apparition enregistre, la zone retombe sur un carre
+autour de l'auteur.
+
+### 11.3 L'objet-recompense
+
+La recompense arrive dans le **dernier emplacement de la barre d'action** (touche 9), reserve :
+l'equipement de depart deplace tout ce qui y aurait atterri vers l'inventaire. **Clic droit**
+pour declencher. L'objet est consomme a l'usage.
+
+Si tu debloques une deuxieme killstreak avant d'avoir utilise la premiere, elle attend en file
+et descend dans l'emplacement des qu'il se libere. Mourir vide la file **et** l'emplacement :
+une recompense non utilisee est perdue, comme le compteur.
+
+Les objets utilises sont des items vanilla (coffre, distributeur, TNT) : le clic droit est
+intercepte et annule, **rien n'est jamais pose**.
+
+### 11.4 Annonces et sons
+
+| Moment | Effet |
+|---|---|
+| Killstreak debloquee | Titre `<nom>` / `disponible` + message chat + `entity.player.levelup` |
+| Frappe designee | Message prive avec les coordonnees et le compte a rebours, `item.elytra.flying` sur la zone |
+| Killstreak utilisee | Message a tous : `X a declenche <nom>` |
+| Bombardement | Titre `BOMBARDEMENT` / `Mettez-vous a couvert` a tous + `entity.lightning_bolt.thunder` |
+| Tir de tourelle | `entity.arrow.shoot` + particules de trace |
+| Drone | `item.elytra.flying` aigu |
+
+Tous les sons sont des sons vanilla de Minecraft.
+
+### 11.5 Les explosions ne cassent jamais de blocs
+
+Toutes les explosions du mod passent par
+`Level.explode(auteur, x, y, z, puissance, Level.ExplosionInteraction.NONE)`.
+`NONE` supprime entierement la phase de destruction de blocs ; seuls les degats aux entites
+sont appliques. L'auteur est passe comme source de l'explosion, donc **les eliminations lui
+sont bien creditees** (et l'atout *Blinde* reduit bien ces degats de 30 %).
+
+### 11.6 Configuration — section `[killstreaks]`
+
+```toml
+[killstreaks]
+	enabled = true
+	# false = seules les eliminations a l'arme font monter la serie
+	streakKillsCountTowardStreak = false
+	droneThreshold = 3
+	droneSeconds = 15
+	resupplyThreshold = 4
+	airstrikeThreshold = 5
+	airstrikeDelaySeconds = 5
+	airstrikeBombs = 9
+	airstrikeSpread = 8          # rayon de dispersion de la salve, en blocs
+	airstrikePower = 3.0         # 4.0 = une TNT
+	turretThreshold = 7
+	turretSeconds = 30
+	turretRange = 20
+	turretIntervalTicks = 15     # 20 ticks = 1 s
+	turretDamage = 4.0
+	carpetThreshold = 11
+	carpetSeconds = 10
+	carpetBombs = 30
+	carpetMargin = 20            # marge autour de la zone des spawns
+	carpetPower = 3.0
+```
+
+Les seuils affiches dans le menu suivent la config : changer `airstrikeThreshold` a 6 et faire
+`/warfare reload` met a jour le libelle dans l'onglet KILLSTREAKS.
+
+### 11.7 Le drone est bien visible par toi seul
+
+Tu demandais de te prevenir si ce n'etait pas faisable proprement. **Ca l'est** : au lieu de
+poser l'effet vanilla *Luminescence* sur les ennemis (qui serait visible par tout le monde), le
+mod renvoie au seul proprietaire du drone les drapeaux synchronises de chaque ennemi avec le bit
+de surbrillance (`0x40`) force, via `ClientboundSetEntityDataPacket`. Le serveur ne modifie
+aucune entite : les autres joueurs ne voient strictement rien.
+
+Seule subtilite : si le serveur envoie ensuite une mise a jour legitime de ces drapeaux (sprint,
+accroupissement...), le client ecrase la surbrillance. Le mod la reaffirme donc **toutes les
+10 ticks** tant que le drone est actif. En pratique ca peut donner un tres bref clignotement
+quand un ennemi se met a sprinter ; dis-moi si tu le vois et je descends l'intervalle.
+
+### 11.8 Onglet KILLSTREAKS du menu de classe
+
+Le menu a maintenant trois onglets : **ARMES**, **ATOUTS**, **KILLSTREAKS**. L'onglet
+killstreaks liste les 5 recompenses triees par seuil, avec leur description a droite. Clic pour
+cocher ou decocher. Au-dela de 3, la plus anciennement cochee sort automatiquement. Le compteur
+`selection : 3/3` passe en ambre quand la selection est complete.
+
+## 12. Checklist de tests en jeu
+
+### 12.1 Serveur et client
 
 - [ ] `./start.sh` -> la console affiche `Done (XX.XXXs)!`
 - [ ] La console affiche `Warfare pret : lobby=... points d'apparition=...`
@@ -405,7 +519,7 @@ a jour de TaCZ.
 - [ ] Connexion OK, aucun kick `Incompatible mod set`
 - [ ] Console serveur : `op TonPseudo`
 
-### 11.2 Armes TaCZ
+### 12.2 Armes TaCZ
 
 - [ ] `/gamemode creative`
 - [ ] `/give TonPseudo tacz:modern_kinetic_gun{GunId:"tacz:ak47"}` -> l'AK-47 apparait avec son modele 3D
@@ -413,7 +527,7 @@ a jour de TaCZ.
 - [ ] Touches TaCZ : *Options -> Commandes -> categorie « Timeless & Classics Guns: Zero »*
 - [ ] Recharger, viser, tirer : son + animation + impacts visibles
 
-### 11.3 Arene
+### 12.3 Arene
 
 - [ ] `/warfare setlobby` -> message de confirmation avec les coordonnees
 - [ ] `/warfare addspawn` sur au moins 2 points eloignes -> `#1`, `#2`...
@@ -421,7 +535,7 @@ a jour de TaCZ.
 - [ ] `/warfare removespawn 2` puis `/warfare listspawns` -> le point a disparu
 - [ ] Redemarrer le serveur -> `/warfare listspawns` affiche toujours tout
 
-### 11.4 Partie (il faut 2 joueurs, ou baisser `minPlayers` a 1 puis `/warfare reload`)
+### 12.4 Partie (il faut 2 joueurs, ou baisser `minPlayers` a 1 puis `/warfare reload`)
 
 - [ ] A la connexion : teleportation au lobby, mode aventure, inventaire vide
 - [ ] Se taper dessus au lobby -> aucun degat
@@ -441,9 +555,9 @@ a jour de TaCZ.
 - [ ] `/warfare stop` en pleine partie -> tout le monde revient au lobby
 - [ ] Console serveur : aucune ligne `ERROR` pendant toute la session
 
-### 11.5 Classes et atouts
+### 12.5 Classes et atouts
 
-- [ ] Le jar `warfare-0.3.0.jar` est dans `server/mods/` **et** dans l'instance Prism
+- [ ] Le jar `warfare-0.4.0.jar` est dans `server/mods/` **et** dans l'instance Prism
 - [ ] Connexion sans `Incompatible mod set`
 - [ ] *Options -> Commandes* : la categorie « Minecraft Warfare » existe, touche **C**
 - [ ] Au lobby, **C** ouvre le menu « Creer une classe »
@@ -465,4 +579,32 @@ a jour de TaCZ.
 - [ ] **Blinde** : survivre a une explosion qui tuerait sans l'atout
 - [ ] **Pas de loup** : un autre joueur ne doit plus entendre tes pas
 - [ ] Mettre `gunWhitelist = ["tacz:ak47"]` + `/warfare reload` -> le menu ne propose plus qu'elle
+- [ ] Console serveur : aucune ligne `ERROR` pendant toute la session
+
+### 12.6 Killstreaks
+
+- [ ] Onglet **KILLSTREAKS** : les 5 recompenses sont listees avec leurs seuils
+- [ ] Cocher 3 killstreaks, le compteur affiche `3/3` en ambre
+- [ ] Cocher une 4e -> la plus anciennement cochee se decoche
+- [ ] **ENREGISTRER** puis se reconnecter -> la selection est conservee
+- [ ] Faire 3 eliminations d'affilee -> titre `Drone de reperage` / `disponible` + son
+- [ ] L'objet apparait bien dans le **dernier emplacement** de la barre (touche 9)
+- [ ] Clic droit -> message a tous `X a declenche Drone de reperage`
+- [ ] **Drone** : les ennemis sont en surbrillance pour toi ; demander a l'autre joueur de
+      confirmer qu'il **ne voit rien** (c'est le point a verifier en priorite)
+- [ ] La surbrillance s'arrete au bout de 15 s avec le message `Drone hors service`
+- [ ] **Ravitaillement** (4) : chargeurs pleins + message indiquant le bonus tire
+- [ ] **Frappe aerienne** (5) : viser un point au loin, clic droit -> message avec les
+      coordonnees, puis salve d'explosions 5 s plus tard a l'endroit vise
+- [ ] Une elimination par la frappe est bien creditee (score + killfeed)
+- [ ] Une elimination par la frappe **ne fait pas monter** la serie
+- [ ] **Tourelle** (7) : viser un bloc proche, clic droit -> la tourelle apparait, nommee,
+      et tire sur l'ennemi qui s'approche a moins de 20 blocs
+- [ ] La tourelle disparait apres 30 s
+- [ ] **Bombardement** (11) : titre `BOMBARDEMENT` pour tout le monde + frappes sur toute l'arene
+- [ ] **Aucun bloc casse** apres toutes ces explosions (verifier le terrain de l'arene)
+- [ ] Clic droit avec un objet de killstreak sur un bloc -> **rien n'est pose**
+- [ ] Mourir -> le compteur repart a zero, l'objet non utilise disparait
+- [ ] `/warfare stop` en pleine partie -> les tourelles posees disparaissent
+- [ ] Changer `droneThreshold` a 2 + `/warfare reload` -> le menu affiche `2` pour le drone
 - [ ] Console serveur : aucune ligne `ERROR` pendant toute la session

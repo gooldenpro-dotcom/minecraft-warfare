@@ -43,9 +43,27 @@ public final class Loadout {
             ItemStack stack = parseExtra(entry);
             if (!stack.isEmpty()) player.getInventory().add(stack);
         }
+        clearStreakSlot(player);
         player.getInventory().selected = 0;
         player.inventoryMenu.broadcastChanges();
         ActivePerks.apply(player, loadout);
+    }
+
+    /**
+     * L'emplacement {@link com.warfare.streak.StreakItems#SLOT} est reserve aux recompenses
+     * de killstreak : si des munitions y ont atterri, on les deplace dans l'inventaire.
+     */
+    private static void clearStreakSlot(ServerPlayer player) {
+        var inventory = player.getInventory();
+        ItemStack occupying = inventory.getItem(com.warfare.streak.StreakItems.SLOT);
+        if (occupying.isEmpty()) return;
+        inventory.setItem(com.warfare.streak.StreakItems.SLOT, ItemStack.EMPTY);
+        for (int slot = 9; slot < 36; slot++) {
+            if (inventory.getItem(slot).isEmpty()) {
+                inventory.setItem(slot, occupying);
+                return;
+            }
+        }
     }
 
     /** @return le prochain slot libre de la barre d'action. */

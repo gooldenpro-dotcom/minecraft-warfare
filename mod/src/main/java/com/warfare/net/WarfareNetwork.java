@@ -30,7 +30,7 @@ import java.util.function.Supplier;
  * puis renvoie l'etat reel au client.
  */
 public final class WarfareNetwork {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(new ResourceLocation(Warfare.MOD_ID, "main"))

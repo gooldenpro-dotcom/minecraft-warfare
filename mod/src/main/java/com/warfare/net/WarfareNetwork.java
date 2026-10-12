@@ -35,7 +35,7 @@ public final class WarfareNetwork {
      * Sans ca, un client d'une ancienne version passe la poignee de main puis decode
      * les paquets avec les mauvais identifiants et se deconnecte sans message clair.
      */
-    private static final String PROTOCOL = "3";
+    private static final String PROTOCOL = "4";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(new ResourceLocation(Warfare.MOD_ID, "main"))
@@ -70,7 +70,7 @@ public final class WarfareNetwork {
 
     /** Etat de la partie, pousse a tous les joueurs une fois par seconde. */
     public record MatchState(String state, int secondsLeft, int maxPlayers, boolean canStart,
-                             String mapName, List<Entry> players) {
+                             String mapName, int killLimit, int matchSeconds, List<Entry> players) {
 
         public record Entry(String name, int kills) {}
 
@@ -80,6 +80,8 @@ public final class WarfareNetwork {
             buf.writeVarInt(msg.maxPlayers);
             buf.writeBoolean(msg.canStart);
             buf.writeUtf(msg.mapName, 64);
+            buf.writeVarInt(msg.killLimit);
+            buf.writeVarInt(msg.matchSeconds);
             buf.writeVarInt(msg.players.size());
             for (Entry entry : msg.players) {
                 buf.writeUtf(entry.name(), 32);
@@ -93,10 +95,12 @@ public final class WarfareNetwork {
             int max = buf.readVarInt();
             boolean canStart = buf.readBoolean();
             String map = buf.readUtf(64);
+            int killLimit = buf.readVarInt();
+            int matchSeconds = buf.readVarInt();
             int size = buf.readVarInt();
             List<Entry> players = new ArrayList<>(size);
             for (int i = 0; i < size; i++) players.add(new Entry(buf.readUtf(32), buf.readVarInt()));
-            return new MatchState(state, seconds, max, canStart, map, players);
+            return new MatchState(state, seconds, max, canStart, map, killLimit, matchSeconds, players);
         }
 
         public static void handle(MatchState msg, Supplier<NetworkEvent.Context> ctx) {

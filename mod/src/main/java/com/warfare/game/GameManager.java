@@ -520,7 +520,7 @@ public final class GameManager {
                     net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
                     new WarfareNetwork.MatchState(state.name(), seconds, server.getMaxPlayers(),
                             player.hasPermissions(2) && state == GameState.LOBBY && ready,
-                            map, entries));
+                            map, WarfareConfig.killLimit, WarfareConfig.matchSeconds, entries));
         }
     }
 

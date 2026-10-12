@@ -9,6 +9,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -33,10 +34,25 @@ public final class WarfareClient {
 
     /** Ecouteurs sur le bus Forge (en jeu). */
     public static final class Handlers {
+        /** En quittant un serveur, on oublie son etat : le menu ne doit pas suivre ailleurs. */
+        @SubscribeEvent
+        public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+            ClientMatchState.reset();
+        }
+
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
             Minecraft minecraft = Minecraft.getInstance();
+
+            // Pas de lobby ou se promener : hors partie, le menu reste ouvert.
+            if (ClientMatchState.synced && ClientMatchState.inLobby()
+                    && minecraft.player != null && minecraft.level != null
+                    && minecraft.screen == null) {
+                minecraft.setScreen(new LobbyScreen());
+                return;
+            }
+
             while (OPEN_CLASSES.consumeClick()) {
                 if (minecraft.player == null || minecraft.screen != null) continue;
                 if (!ClientClassData.menuAllowed) {

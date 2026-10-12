@@ -27,9 +27,9 @@ import java.util.List;
  * aucune texture, aucun son et aucun visuel repris d'un jeu existant.
  */
 public class ClassScreen extends Screen {
-    private static final int PANEL_W = 400;
-    private static final int PANEL_H = 230;
-    private static final int SIDEBAR_W = 58;
+    private static final int PANEL_W = 440;
+    private static final int PANEL_H = 276;
+    private static final int SIDEBAR_W = 70;
     private static final int ROW_H = 12;
 
     private static final int C_SHADE = Palette.SHADE;
@@ -103,7 +103,7 @@ public class ClassScreen extends Screen {
         for (int i = 0; i < PlayerClasses.SLOTS; i++) {
             final int slot = i;
             String label = (ClientClassData.classes.selected() == i ? "▸ " : "  ")
-                    + trim(ClientClassData.classes.get(i).name(), 8);
+                    + trim(ClientClassData.classes.get(i).name(), 10);
             WarButton button = new WarButton(left + 5, top + 26 + i * 20, SIDEBAR_W - 10, 17,
                     Component.literal(label), () -> selectSlot(slot));
             button.selected = i == editingSlot;
@@ -112,7 +112,7 @@ public class ClassScreen extends Screen {
     }
 
     private void buildHeader() {
-        EditBox nameBox = new EditBox(font, contentX + 30, top + 24, 150, 14, Component.literal("Nom"));
+        EditBox nameBox = new EditBox(font, contentX + 30, top + 24, 170, 14, Component.literal("Nom"));
         nameBox.setMaxLength(ClassLoadout.MAX_NAME_LENGTH);
         nameBox.setValue(draft.name());
         nameBox.setResponder(value -> draft = draft.withName(value));
@@ -120,13 +120,13 @@ public class ClassScreen extends Screen {
 
         int tabX = contentX;
         for (Tab value : Tab.values()) {
-            WarButton button = new WarButton(tabX, top + 44, 90, 16, Component.literal(labelOf(value)), () -> {
+            WarButton button = new WarButton(tabX, top + 44, 96, 16, Component.literal(labelOf(value)), () -> {
                 tab = value;
                 rebuildWidgets();
             });
             button.selected = tab == value;
             addRenderableWidget(button);
-            tabX += 92;
+            tabX += 100;
         }
     }
 
@@ -140,11 +140,11 @@ public class ClassScreen extends Screen {
 
     private void buildWeaponsTab() {
         listX = contentX;
-        listY = top + 114;
-        listW = 200;
-        listH = 84;
+        listY = top + 120;
+        listW = 220;
+        listH = 120;
 
-        WarButton primary = new WarButton(contentX, top + 66, 98, 16,
+        WarButton primary = new WarButton(contentX, top + 66, 108, 16,
                 Component.literal("PRINCIPALE"), () -> {
             editingPrimary = true;
             typeFilter = null;
@@ -154,7 +154,7 @@ public class ClassScreen extends Screen {
         primary.selected = editingPrimary;
         addRenderableWidget(primary);
 
-        WarButton secondary = new WarButton(contentX + 102, top + 66, 98, 16,
+        WarButton secondary = new WarButton(contentX + 112, top + 66, 108, 16,
                 Component.literal("SECONDAIRE"), () -> {
             editingPrimary = false;
             typeFilter = null;
@@ -164,21 +164,28 @@ public class ClassScreen extends Screen {
         secondary.selected = !editingPrimary;
         addRenderableWidget(secondary);
 
+        // Filtres par type : on passe a la ligne suivante plutot que d'en perdre.
         int filterX = contentX;
-        WarButton allTypes = new WarButton(filterX, top + 96, 30, 14, Component.literal("Tout"), () -> {
+        int filterY = top + 86;
+        WarButton allTypes = new WarButton(filterX, filterY, 32, 14, Component.literal("Tout"), () -> {
             typeFilter = null;
             scroll = 0;
             rebuildWidgets();
         });
         allTypes.selected = typeFilter == null;
         addRenderableWidget(allTypes);
-        filterX += 32;
+        filterX += 34;
+
         for (String type : types) {
-            String label = trim(GunCatalog.typeLabel(type), 9);
-            int w = Math.max(28, font.width(label) + 8);
-            if (filterX + w > contentX + listW) break;
+            String label = GunCatalog.typeShort(type);
+            int w = font.width(label) + 10;
+            if (filterX + w > contentX + listW) {
+                filterX = contentX;
+                filterY += 16;
+                if (filterY > top + 102) break;   // deux lignes au maximum
+            }
             final String target = type;
-            WarButton button = new WarButton(filterX, top + 96, w, 14, Component.literal(label), () -> {
+            WarButton button = new WarButton(filterX, filterY, w, 14, Component.literal(label), () -> {
                 typeFilter = target;
                 scroll = 0;
                 rebuildWidgets();
@@ -194,7 +201,7 @@ public class ClassScreen extends Screen {
         for (int category = 1; category <= Perk.CATEGORIES; category++) {
             int x = contentX;
             for (Perk perk : Perk.ofCategory(category)) {
-                WarButton button = new WarButton(x, y, 152, 16,
+                WarButton button = new WarButton(x, y, 168, 16,
                         Component.literal(trim(perk.title(), 22)), () -> {
                     draft = draft.withPerk(perk);
                     rebuildWidgets();
@@ -202,7 +209,7 @@ public class ClassScreen extends Screen {
                 button.selected = draft.has(perk);
                 button.setTooltip(Tooltip.create(Component.literal(perk.description())));
                 addRenderableWidget(button);
-                x += 156;
+                x += 172;
             }
             y += 38;
         }
@@ -211,7 +218,7 @@ public class ClassScreen extends Screen {
     private void buildStreaksTab() {
         int y = top + 70;
         for (Killstreak streak : Killstreak.sorted()) {
-            WarButton button = new WarButton(contentX, y, 170, 18,
+            WarButton button = new WarButton(contentX, y, 190, 18,
                     Component.literal(streak.threshold() + " — " + trim(streak.title(), 20)),
                     () -> {
                         draft = draft.withStreakToggled(streak);
@@ -225,9 +232,9 @@ public class ClassScreen extends Screen {
     }
 
     private void buildFooter() {
-        addRenderableWidget(new WarButton(contentX, top + PANEL_H - 26, 98, 18,
+        addRenderableWidget(new WarButton(contentX, top + PANEL_H - 26, 108, 18,
                 Component.literal("ENREGISTRER"), this::save));
-        addRenderableWidget(new WarButton(contentX + 102, top + PANEL_H - 26, 98, 18,
+        addRenderableWidget(new WarButton(contentX + 112, top + PANEL_H - 26, 108, 18,
                 Component.literal("EQUIPER"), this::equip));
         addRenderableWidget(new WarButton(left + PANEL_W - 24, top + 4, 19, 14,
                 Component.literal("X"), this::onClose));
@@ -278,7 +285,7 @@ public class ClassScreen extends Screen {
         }
 
         graphics.drawString(font, "Equipee : " + trim(ClientClassData.classes.current().name(), 14),
-                contentX + 210, top + PANEL_H - 21, C_MUTED, false);
+                contentX + 228, top + PANEL_H - 21, C_MUTED, false);
 
         super.render(graphics, mouseX, mouseY, partialTick);
     }
@@ -286,11 +293,11 @@ public class ClassScreen extends Screen {
     private void renderWeaponsTab(GuiGraphics graphics, int mouseX, int mouseY) {
         int sideX = contentX + listW + 8;
         graphics.drawString(font, "PRINCIPALE", sideX, top + 70, C_MUTED, false);
-        graphics.drawString(font, trim(gunLabel(draft.primaryGun()), 18), sideX, top + 81, C_TEXT, false);
+        graphics.drawString(font, trim(gunLabel(draft.primaryGun()), 20), sideX, top + 81, C_TEXT, false);
         graphics.drawString(font, "SECONDAIRE", sideX, top + 99, C_MUTED, false);
-        graphics.drawString(font, trim(gunLabel(draft.secondaryGun()), 18), sideX, top + 110, C_TEXT, false);
-        graphics.drawString(font, "molette :", sideX, top + 134, C_MUTED, false);
-        graphics.drawString(font, "defiler la liste", sideX, top + 145, C_MUTED, false);
+        graphics.drawString(font, trim(gunLabel(draft.secondaryGun()), 20), sideX, top + 110, C_TEXT, false);
+        graphics.drawString(font, "molette : defiler", sideX, top + 136, C_MUTED, false);
+        graphics.drawString(font, "clic : choisir", sideX, top + 147, C_MUTED, false);
 
         graphics.fill(listX, listY, listX + listW, listY + listH, C_INSET);
         outline(graphics, listX, listY, listW, listH, C_BORDER);
@@ -313,10 +320,10 @@ public class ClassScreen extends Screen {
             } else if (hovered) {
                 graphics.fill(listX + 1, y, listX + listW - 1, y + ROW_H, 0xFF20241D);
             }
-            graphics.drawString(font, trim(nameOf(entry), 24), listX + 7, y + 2,
+            graphics.drawString(font, trim(nameOf(entry), 22), listX + 7, y + 2,
                     chosen ? C_ACCENT : C_TEXT, false);
-            graphics.drawString(font, trim(GunCatalog.typeLabel(entry.type()), 10),
-                    listX + listW - 66, y + 2, C_MUTED, false);
+            String type = GunCatalog.typeShort(entry.type());
+            graphics.drawString(font, type, listX + listW - 10 - font.width(type), y + 2, C_MUTED, false);
         }
         graphics.disableScissor();
 

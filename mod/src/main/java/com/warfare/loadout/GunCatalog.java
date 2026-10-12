@@ -49,6 +49,20 @@ public final class GunCatalog {
         return id != null && TimelessAPI.getCommonGunIndex(id).isPresent();
     }
 
+    /** Libelle court, pour les boutons de filtre et la colonne de droite de la liste. */
+    public static String typeShort(String type) {
+        return switch (type) {
+            case "rifle" -> "Fusils";
+            case "smg" -> "SMG";
+            case "sniper" -> "Snipers";
+            case "pistol" -> "Pistolets";
+            case "shotgun" -> "Pompes";
+            case "rpg" -> "RPG";
+            case "mg" -> "MG";
+            default -> type.substring(0, 1).toUpperCase() + type.substring(1);
+        };
+    }
+
     private static boolean isWhitelisted(String gunId) {
         List<? extends String> whitelist = WarfareConfig.gunWhitelist;
         return whitelist.isEmpty() || whitelist.contains(gunId);

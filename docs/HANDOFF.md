@@ -12,11 +12,14 @@ Detail complet : [ETAT_ACTUEL.md](ETAT_ACTUEL.md).
 ## 2. A faire tout de suite (bloquant pour jouer a deux)
 
 1. **Tester en jeu** avec la checklist [TESTS.md](TESTS.md).
-2. **Publier le pack** pour que le collegue recoive la 0.7.0 :
+2. ~~Publier le pack~~ **fait** : `warfare 0.7.0` est pousse sur
+   `gooldenpro-dotcom/minecraft-warfare-pack` (commit `562b133`). Les joueurs se mettent
+   a jour au prochain lancement de Prism. Rappel pour les prochaines versions :
    ```bash
-   cd "/Users/clement/Desktop/Minecraft Warfare/pack" && git add -A && git commit -m "pack: warfare 0.7.0" && git push
+   cd "/Users/clement/Desktop/Minecraft Warfare/pack" && git add -A && git commit -m "pack: warfare <version>" && git push
    ```
-   Sans ca il reste en 0.6.1 et **sera refuse a la connexion** (protocole reseau 4 → 5).
+   Sans ca les joueurs restent sur l'ancienne version et **sont refuses a la connexion**
+   des que le protocole reseau change.
 3. **Replacer les points d'apparition** de Terminal : ceux crees automatiquement sont
    autour du spawn du monde, pas aux vrais points de la carte.
    ```

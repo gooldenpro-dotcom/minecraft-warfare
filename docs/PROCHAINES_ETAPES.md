@@ -6,8 +6,7 @@ Une etape = une session de travail. Cocher en avancant.
 ## P0 — finir le premier rendu jouable
 
 - [ ] Tester la 0.7.0 en jeu ([TESTS.md](TESTS.md)) et corriger ce qui casse.
-- [ ] Publier le pack packwiz (`cd pack && git add -A && git commit && git push`),
-      sinon le collegue reste en 0.6.1 et est refuse a la connexion.
+- [x] Publier le pack packwiz — fait le 12/10/2026 (`562b133`).
 - [ ] Replacer les points d'apparition de Terminal aux vrais emplacements de la carte
       (ceux generes automatiquement sont autour du spawn du monde).
 - [ ] Installer **Shipment** (`maps/Shipment.zip`) comme deuxieme arene, pour les

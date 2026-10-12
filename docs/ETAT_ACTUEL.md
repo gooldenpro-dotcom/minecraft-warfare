@@ -83,8 +83,8 @@ stand de tir, skins. Voir [ROADMAP.md](ROADMAP.md).
 ## Distribution aux joueurs
 
 - Pack packwiz dans `pack/`, publie sur `https://github.com/gooldenpro-dotcom/minecraft-warfare-pack`.
-- `pack/` contient deja `warfare-0.7.0.jar` et l'index rafraichi, **mais rien n'est
-  pousse sur GitHub** : tant que le `git push` n'est pas fait, les joueurs restent en 0.6.1
-  et **ne pourront pas se connecter** (le protocole reseau du mod est passe de 4 a 5).
+- `warfare 0.7.0` est **publie** (commit `562b133`) : les joueurs recoivent la mise a
+  jour au prochain lancement de Prism. C'est indispensable ici, le protocole reseau du
+  mod est passe de 4 a 5 : un client 0.6.1 est refuse a la connexion.
 - Instance Prism locale (`~/Library/Application Support/PrismLauncher/instances/Minecraft Warfare`)
   deja a jour en 0.7.0.

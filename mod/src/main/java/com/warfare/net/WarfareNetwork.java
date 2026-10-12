@@ -30,7 +30,12 @@ import java.util.function.Supplier;
  * puis renvoie l'etat reel au client.
  */
 public final class WarfareNetwork {
-    private static final String PROTOCOL = "2";
+    /**
+     * A INCREMENTER a chaque ajout, suppression ou changement d'ordre de paquet.
+     * Sans ca, un client d'une ancienne version passe la poignee de main puis decode
+     * les paquets avec les mauvais identifiants et se deconnecte sans message clair.
+     */
+    private static final String PROTOCOL = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(new ResourceLocation(Warfare.MOD_ID, "main"))
@@ -40,17 +45,18 @@ public final class WarfareNetwork {
             .simpleChannel();
 
     public static void register() {
+        // Les identifiants doivent rester stables : tout nouveau paquet s'ajoute A LA FIN.
         int id = 0;
-        CHANNEL.registerMessage(id++, MatchState.class, MatchState::encode, MatchState::decode,
-                MatchState::handle);
-        CHANNEL.registerMessage(id++, RequestStart.class, RequestStart::encode, RequestStart::decode,
-                RequestStart::handle);
         CHANNEL.registerMessage(id++, SyncClasses.class, SyncClasses::encode, SyncClasses::decode,
                 SyncClasses::handle);
         CHANNEL.registerMessage(id++, SaveClass.class, SaveClass::encode, SaveClass::decode,
                 SaveClass::handle);
-        CHANNEL.registerMessage(id, SelectClass.class, SelectClass::encode, SelectClass::decode,
+        CHANNEL.registerMessage(id++, SelectClass.class, SelectClass::encode, SelectClass::decode,
                 SelectClass::handle);
+        CHANNEL.registerMessage(id++, MatchState.class, MatchState::encode, MatchState::decode,
+                MatchState::handle);
+        CHANNEL.registerMessage(id, RequestStart.class, RequestStart::encode, RequestStart::decode,
+                RequestStart::handle);
     }
 
     /** Envoie au joueur ses classes, le catalogue autorise et le droit d'ouvrir le menu. */

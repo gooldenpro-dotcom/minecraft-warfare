@@ -8,8 +8,7 @@ version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
-# Mod 100% serveur a cette etape : les clients peuvent se connecter sans l'avoir.
-displayTest="IGNORE_SERVER_VERSION"
+# Depuis l'etape 3 le mod ajoute un ecran client : il doit etre installe des deux cotes.
 
 [[dependencies.${mod_id}]]
     modId="forge"

@@ -1,6 +1,10 @@
 package com.warfare.game;
 
 import com.warfare.WarfareConfig;
+import com.warfare.loadout.ClassLoadout;
+import com.warfare.loadout.ClassStore;
+import com.warfare.net.WarfareNetwork;
+import com.warfare.perk.ActivePerks;
 import com.warfare.util.Txt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -48,6 +52,7 @@ public final class GameManager {
     private final Map<UUID, Long> protectedUntil = new HashMap<>();
     private final Map<UUID, WarfareData.Spot> deathSpots = new HashMap<>();
     private final List<Death> pending = new ArrayList<>();
+    private final Map<UUID, Boolean> menuSynced = new HashMap<>();
 
     public GameState state() {
         return state;
@@ -55,6 +60,11 @@ public final class GameManager {
 
     public boolean isRunning() {
         return state == GameState.RUNNING;
+    }
+
+    /** Le menu "Creer une classe" n'est utilisable qu'au lobby ou entre deux vies. */
+    public boolean isMenuAllowed(UUID id) {
+        return state != GameState.RUNNING || respawnAt.containsKey(id);
     }
 
     /** Invincible : lobby, ecran de fin, attente de reapparition ou protection au spawn. */
@@ -132,6 +142,8 @@ public final class GameManager {
     public void onJoin(ServerPlayer player) {
         kills.putIfAbsent(player.getUUID(), 0);
         deaths.putIfAbsent(player.getUUID(), 0);
+        ClassStore.get(player.server, player.getUUID());
+        pushMenuState(player, true);
         if (state == GameState.RUNNING) {
             spawnIntoMatch(player);
         } else {
@@ -141,10 +153,23 @@ public final class GameManager {
 
     public void onLeave(ServerPlayer player) {
         UUID id = player.getUUID();
+        ClassStore.save(player.server, id);
+        ClassStore.unload(id);
+        ActivePerks.forget(id);
         respawnAt.remove(id);
         protectedUntil.remove(id);
         deathSpots.remove(id);
+        menuSynced.remove(id);
         Sidebar.forget(id);
+    }
+
+    /** Previent le client qu'il peut (ou non) ouvrir le menu de classes. */
+    private void pushMenuState(ServerPlayer player, boolean force) {
+        boolean allowed = isMenuAllowed(player.getUUID());
+        Boolean last = menuSynced.get(player.getUUID());
+        if (!force && last != null && last == allowed) return;
+        menuSynced.put(player.getUUID(), allowed);
+        WarfareNetwork.sync(player, allowed);
     }
 
     /** Reapparition vanilla immediate : on bascule en mode spectateur pendant le delai. */
@@ -181,6 +206,7 @@ public final class GameManager {
         if (tick % 20 == 0) {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 p.getFoodData().setFoodLevel(20);
+                pushMenuState(p, false);
             }
         }
     }
@@ -354,6 +380,7 @@ public final class GameManager {
     public void toLobby(ServerPlayer player) {
         MinecraftServer server = player.server;
         reset(player);
+        ActivePerks.clear(player);
         player.setGameMode(GameType.ADVENTURE);
         player.setInvulnerable(true);
         Sidebar.hide(player);
@@ -370,7 +397,9 @@ public final class GameManager {
         player.setGameMode(GameType.ADVENTURE);
         WarfareData.Spot spot = chooseSpawn(player);
         if (spot != null) teleport(player, spot);
-        Loadout.give(player);
+        ClassLoadout loadout = ClassStore.get(player.server, player.getUUID()).current();
+        Loadout.give(player, loadout);
+        player.sendSystemMessage(Txt.info(Txt.c("Classe : " + loadout.name(), ChatFormatting.GRAY)));
         player.setInvulnerable(WarfareConfig.spawnProtectionSeconds > 0);
         protectedUntil.put(player.getUUID(), tick + WarfareConfig.spawnProtectionSeconds * 20L);
         Txt.clearTitle(player);

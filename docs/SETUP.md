@@ -236,13 +236,167 @@ Ce que le mod utilise reellement, verifie dans le jar TaCZ :
 - **`IGun` / `IAmmo`** — construction des ItemStacks (`tacz:modern_kinetic_gun` + NBT `GunId`,
   `tacz:ammo` + NBT `AmmoId`), arme livree chargee avec une balle en chambre.
 
-### 9.8 Ce qui n'est pas encore fait
+### 9.8 Equipement par defaut
 
-Pas d'ecran client, pas de classes personnalisees, pas d'atouts : c'est l'etape 3.
+`loadout.primaryGun` / `secondaryGun` ne servent plus que de **valeur de repli** : depuis
+l'etape 3, chaque joueur reapparait avec la classe qu'il a equipee (voir section 10).
+Les valeurs de la config restent utilisees pour les classes jamais modifiees et quand
+une arme enregistree n'est plus autorisee.
 
-## 10. Checklist de tests en jeu
+## 10. Creation de classe et atouts (etape 3)
 
-### 10.1 Serveur et client
+### 10.1 Installer le mod dans Prism Launcher — obligatoire desormais
+
+Le mod ajoute un ecran client : **il doit etre installe sur le client comme sur le serveur**,
+dans la meme version. `displayTest` a ete retire de `mods.toml`, donc un client sans le mod
+est refuse avec `Incompatible mod set`.
+
+Methode recommandee (sure) :
+
+1. Prism Launcher -> instance `Minecraft Warfare` -> **Edit**
+2. Panneau **Mods** -> **Add file...**
+3. Choisir `~/Documents/minecraft-warfare/mod/build/libs/warfare-0.3.0.jar`
+4. Verifier que `warfare` et `tacz` apparaissent tous les deux, coches
+
+Methode par le dossier, si tu preferes la ligne de commande :
+
+```bash
+cp ~/Documents/minecraft-warfare/mod/build/libs/warfare-0.3.0.jar \
+   "$HOME/Library/Application Support/PrismLauncher/instances/Minecraft Warfare/minecraft/mods/"
+```
+
+Remplace `Minecraft Warfare` par le nom exact de ton instance. Selon son age, Prism utilise
+`minecraft/` ou `.minecraft/` comme dossier de jeu — verifie lequel existe :
+
+```bash
+ls -d "$HOME/Library/Application Support/PrismLauncher/instances/"*/{minecraft,.minecraft} 2>/dev/null
+```
+
+**A chaque recompilation du mod, il faut remplacer le jar des deux cotes** (serveur et Prism),
+sinon la connexion est refusee.
+
+### 10.2 Ouvrir le menu
+
+Touche **C** par defaut, remappable dans *Options -> Commandes -> categorie « Minecraft Warfare »*.
+
+Le menu ne s'ouvre **qu'au lobby ou entre deux vies** (pendant les 3 s de reapparition).
+En pleine partie, un message apparait dans la barre d'action a la place. Le serveur envoie ce
+droit au client ; il ne se devine pas cote client.
+
+### 10.3 Le menu
+
+```
++---------+--------------------------------------------------+
+| CREER UNE CLASSE                                       [X] |
++---------+--------------------------------------------------+
+| > CL 1  | NOM  [Assaut__________]                          |
+|   CL 2  |                                                  |
+|   CL 3  | [ PRINCIPALE ] [ SECONDAIRE ]                     |
+|   CL 4  | [Tout][Fusils][Mitraillettes][Pistolets]...       |
+|   CL 5  | +-----------------------+  ATOUTS                 |
+|         | | AK-47          Fusils |  [ Sprinteur        ]   |
+|         | | M4A1           Fusils |  [ Visee eclair     ]   |
+|         | | HK416D         Fusils |                         |
+|         | | ...                   |  [ Puissance d'arret]   |
+|         | +-----------------------+  [ Blinde           ]   |
+|         |                            [ Pas de loup      ]   |
+|         | [ENREGISTRER] [EQUIPER]    [ Cadence soutenue ]   |
++---------+--------------------------------------------------+
+```
+
+- **5 emplacements** par joueur, colonne de gauche. Le `>` marque la classe equipee.
+- **NOM** : 16 caracteres maximum.
+- **PRINCIPALE / SECONDAIRE** : choisit l'arme que la liste modifie. Survoler le bouton affiche
+  l'arme actuellement choisie.
+- Les boutons de **type** filtrent la liste. Les types viennent de TaCZ (`rifle`, `smg`,
+  `sniper`, `pistol`, `shotgun`...), pas d'une liste ecrite en dur.
+- **ATOUTS** : un seul atout par categorie, les deux options de chaque categorie sont
+  exclusives. Survoler un atout affiche son effet exact.
+- **ENREGISTRER** enregistre la classe. **EQUIPER** l'enregistre et la rend active ;
+  elle est donnee **a la prochaine reapparition**, jamais en cours de vie.
+
+Le menu est dessine entierement a l'aplat (aucune texture, aucun son, aucun visuel repris
+d'un jeu existant) : fond sombre, liseres olive, accent ambre.
+
+### 10.4 Les atouts
+
+| Cat. | Atout | Effet | Branchement |
+|---|---|---|---|
+| 1 | **Sprinteur** | +10 % de vitesse de deplacement | Attribut vanilla `MOVEMENT_SPEED` (`MULTIPLY_TOTAL`) |
+| 1 | **Visee eclair** | -30 % de temps de mise en joue | `GunProperties.ADS_TIME` via `AttachmentPropertyEvent` |
+| 2 | **Puissance d'arret** | +20 % de degats par balle | `EntityHurtByGunEvent.Pre.setBaseAmount()` |
+| 2 | **Blinde** | -30 % de degats d'explosion | `LivingHurtEvent` + tag `IS_EXPLOSION` |
+| 3 | **Pas de loup** | Tes pas ne font aucun bruit pour les autres | `PlayLevelSoundEvent.AtPosition` annule |
+| 3 | **Cadence soutenue** | +15 % de cadence de tir | `GunProperties.ROUNDS_PER_MINUTE` via `AttachmentPropertyEvent` |
+
+Les atouts qui agissent sur l'arme passent par les proprietes TaCZ. Comme
+`AttachmentPropertyEvent` ne fournit que l'ItemStack et pas son porteur, les armes distribuees
+par le mod portent un tag NBT `WarfarePerks` qui liste les atouts de la classe. Les autres
+atouts sont appliques au joueur au moment de la reapparition et retires au retour au lobby.
+
+### 10.5 Liste blanche des armes
+
+`config/warfare-common.toml` :
+
+```toml
+[loadout]
+	# Liste vide = toutes les armes TaCZ chargees
+	gunWhitelist = ["tacz:ak47", "tacz:m4a1", "tacz:hk416d", "tacz:glock_17", "tacz:deagle"]
+```
+
+Puis `/warfare reload`. La liste est envoyee au client, qui n'affiche que ces armes, **et**
+revalidee a l'enregistrement : une arme hors liste est remplacee par celle de la config.
+
+### 10.6 Stockage et validation
+
+- Un fichier JSON par joueur : `server/world/warfare/classes/<uuid>.json`
+- Charge a la connexion, reecrit a chaque enregistrement et a la deconnexion
+
+```json
+{
+  "selected": 0,
+  "classes": [
+    { "name": "Assaut", "primary": "tacz:ak47", "secondary": "tacz:glock_17",
+      "perks": ["sprinteur", "puissance_arret", "cadence"] }
+  ]
+}
+```
+
+Rien de ce qui vient du client n'est repris tel quel. `ClassStore.sanitize` borne le nom a
+16 caracteres et retire les codes de couleur et les caracteres de controle, verifie chaque arme
+contre le catalogue TaCZ et la liste blanche, et force un atout valide par categorie. Un client
+modifie qui envoie `tacz:m107` alors qu'il est hors liste blanche se retrouve avec l'arme de la
+config, pas avec le M107.
+
+### 10.7 Deux atouts demandes n'ont pas pu etre branches sur TaCZ
+
+Verifie dans `tacz-1.20.1-1.1.8-hotfix2.jar`, pas devine :
+
+- **« Mains rapides » (rechargement +30 %)** — `com.tacz.guns.api.GunProperties` contient 17
+  proprietes modifiables (degats, cadence, recul, visee, portee, silence, poids...) mais
+  **aucune propriete de rechargement**. Le seul autre point d'entree serait
+  `ShooterDataHolder.reloadTimestamp`, or `GunReloadEvent` est poste **avant** que
+  `LivingEntityReload` n'ecrive ce champ : toute valeur qu'on y mettrait serait ecrasee.
+  Il faudrait un Mixin dans `LivingEntityReload.tickReloadState()`, applique a l'identique
+  sur le client et le serveur pour que l'animation reste synchrone.
+  **Remplace par « Visee eclair »** (-30 % de temps de mise en joue), meme categorie,
+  meme logique de maniement, via l'API supportee.
+
+- **« Commando » (portee au corps a corps augmentee)** — `GunMeleeData.getDistance()` est lu
+  directement dans les donnees de l'arme a chaque coup, sans modificateur ni evenement.
+  `GunMeleeEvent` est annulable mais ne porte aucune distance : il faudrait annuler le corps
+  a corps de TaCZ et reimplementer son raycast, ses degats, son recul, son temps de recharge
+  et son animation.
+  **Remplace par « Cadence soutenue »** (+15 % de cadence de tir), qui garde l'esprit
+  « agressif au contact » face a l'option furtive de la meme categorie.
+
+Si tu veux les deux atouts d'origine, c'est faisable avec des Mixins dans TaCZ — dis-le-moi
+et je le fais dans une etape dediee, en sachant que ca casse potentiellement a chaque mise
+a jour de TaCZ.
+
+## 11. Checklist de tests en jeu
+
+### 11.1 Serveur et client
 
 - [ ] `./start.sh` -> la console affiche `Done (XX.XXXs)!`
 - [ ] La console affiche `Warfare pret : lobby=... points d'apparition=...`
@@ -251,7 +405,7 @@ Pas d'ecran client, pas de classes personnalisees, pas d'atouts : c'est l'etape 
 - [ ] Connexion OK, aucun kick `Incompatible mod set`
 - [ ] Console serveur : `op TonPseudo`
 
-### 10.2 Armes TaCZ
+### 11.2 Armes TaCZ
 
 - [ ] `/gamemode creative`
 - [ ] `/give TonPseudo tacz:modern_kinetic_gun{GunId:"tacz:ak47"}` -> l'AK-47 apparait avec son modele 3D
@@ -259,7 +413,7 @@ Pas d'ecran client, pas de classes personnalisees, pas d'atouts : c'est l'etape 
 - [ ] Touches TaCZ : *Options -> Commandes -> categorie « Timeless & Classics Guns: Zero »*
 - [ ] Recharger, viser, tirer : son + animation + impacts visibles
 
-### 10.3 Arene
+### 11.3 Arene
 
 - [ ] `/warfare setlobby` -> message de confirmation avec les coordonnees
 - [ ] `/warfare addspawn` sur au moins 2 points eloignes -> `#1`, `#2`...
@@ -267,7 +421,7 @@ Pas d'ecran client, pas de classes personnalisees, pas d'atouts : c'est l'etape 
 - [ ] `/warfare removespawn 2` puis `/warfare listspawns` -> le point a disparu
 - [ ] Redemarrer le serveur -> `/warfare listspawns` affiche toujours tout
 
-### 10.4 Partie (il faut 2 joueurs, ou baisser `minPlayers` a 1 puis `/warfare reload`)
+### 11.4 Partie (il faut 2 joueurs, ou baisser `minPlayers` a 1 puis `/warfare reload`)
 
 - [ ] A la connexion : teleportation au lobby, mode aventure, inventaire vide
 - [ ] Se taper dessus au lobby -> aucun degat
@@ -285,4 +439,30 @@ Pas d'ecran client, pas de classes personnalisees, pas d'atouts : c'est l'etape 
 - [ ] Baisser `killLimit` a 2 -> la partie se termine : titre vainqueur + classement dans le chat
 - [ ] Retour automatique au lobby apres 10 s, puis nouveau compte a rebours
 - [ ] `/warfare stop` en pleine partie -> tout le monde revient au lobby
+- [ ] Console serveur : aucune ligne `ERROR` pendant toute la session
+
+### 11.5 Classes et atouts
+
+- [ ] Le jar `warfare-0.3.0.jar` est dans `server/mods/` **et** dans l'instance Prism
+- [ ] Connexion sans `Incompatible mod set`
+- [ ] *Options -> Commandes* : la categorie « Minecraft Warfare » existe, touche **C**
+- [ ] Au lobby, **C** ouvre le menu « Creer une classe »
+- [ ] En pleine partie vivant, **C** affiche le refus dans la barre d'action
+- [ ] Pendant les 3 s de reapparition, **C** ouvre bien le menu
+- [ ] La liste d'armes contient les armes TaCZ, les filtres par type fonctionnent
+- [ ] La molette fait defiler la liste, la barre de defilement suit
+- [ ] Choisir une arme principale et une secondaire, 3 atouts, nommer la classe
+- [ ] **ENREGISTRER** -> message `Classe "..." enregistree` dans le chat
+- [ ] **EQUIPER** -> message `... equipee a la prochaine reapparition`
+- [ ] Mourir -> reapparaitre avec les bonnes armes, message `Classe : <nom>`
+- [ ] Changer d'emplacement (CL 1 -> CL 2), modifier, revenir : les deux sont conservees
+- [ ] Se deconnecter / reconnecter -> les 5 classes sont toujours la
+- [ ] `server/world/warfare/classes/<ton-uuid>.json` existe et contient tes classes
+- [ ] **Sprinteur** : se deplacer, comparer avec une classe sans l'atout
+- [ ] **Visee eclair** : mise en joue nettement plus rapide
+- [ ] **Cadence soutenue** : cadence plus elevee en automatique
+- [ ] **Puissance d'arret** : moins de balles pour tuer (tester a 2)
+- [ ] **Blinde** : survivre a une explosion qui tuerait sans l'atout
+- [ ] **Pas de loup** : un autre joueur ne doit plus entendre tes pas
+- [ ] Mettre `gunWhitelist = ["tacz:ak47"]` + `/warfare reload` -> le menu ne propose plus qu'elle
 - [ ] Console serveur : aucune ligne `ERROR` pendant toute la session

@@ -28,6 +28,7 @@ public final class WarfareConfig {
     private static final ForgeConfigSpec.IntValue PRIMARY_MAGAZINES;
     private static final ForgeConfigSpec.IntValue SECONDARY_MAGAZINES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXTRA_ITEMS;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> GUN_WHITELIST;
 
     // --- Affichage ---
     private static final ForgeConfigSpec.BooleanValue SHOW_GUN_IN_KILLFEED;
@@ -65,6 +66,10 @@ public final class WarfareConfig {
                 .defineInRange("secondaryMagazines", 4, 0, 64);
         EXTRA_ITEMS = B.comment("Items supplementaires, au format \"identifiant quantite\" (ex: \"minecraft:golden_apple 1\")")
                 .defineListAllowEmpty(List.of("extraItems"), List::of, o -> o instanceof String);
+        GUN_WHITELIST = B.comment("Armes selectionnables dans le menu \"Creer une classe\".",
+                        "Liste vide = toutes les armes TaCZ chargees.",
+                        "Exemple : [\"tacz:ak47\", \"tacz:m4a1\", \"tacz:glock_17\"]")
+                .defineListAllowEmpty(List.of("gunWhitelist"), List::of, o -> o instanceof String);
         B.pop();
 
         B.comment("Affichage et messages").push("display");
@@ -91,6 +96,7 @@ public final class WarfareConfig {
     public static int primaryMagazines = 5;
     public static int secondaryMagazines = 4;
     public static List<? extends String> extraItems = List.of();
+    public static List<? extends String> gunWhitelist = List.of();
     public static boolean showGunInKillfeed = true;
     public static boolean announceHeadshots = true;
     public static boolean manageGameRules = true;
@@ -119,6 +125,7 @@ public final class WarfareConfig {
         primaryMagazines = PRIMARY_MAGAZINES.get();
         secondaryMagazines = SECONDARY_MAGAZINES.get();
         extraItems = EXTRA_ITEMS.get();
+        gunWhitelist = GUN_WHITELIST.get();
         showGunInKillfeed = SHOW_GUN_IN_KILLFEED.get();
         announceHeadshots = ANNOUNCE_HEADSHOTS.get();
         manageGameRules = MANAGE_GAMERULES.get();

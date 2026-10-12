@@ -6,6 +6,9 @@ import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.resource.index.CommonGunIndex;
 import com.warfare.Warfare;
 import com.warfare.WarfareConfig;
+import com.warfare.loadout.ClassLoadout;
+import com.warfare.perk.ActivePerks;
+import com.warfare.perk.PerkEffects;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,54 +19,54 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.Optional;
 
 /**
- * Construit et distribue l'equipement par defaut (armes TaCZ + munitions).
+ * Construit et distribue l'equipement d'une classe (armes TaCZ + munitions)
+ * et active les atouts correspondants.
  *
  * Identifiants verifies dans tacz-1.20.1-1.1.8-hotfix2.jar :
  *   - item arme     : tacz:modern_kinetic_gun, NBT GunId
  *   - item munition : tacz:ammo, NBT AmmoId
- * Le calibre et la taille du chargeur sont lus dans l'index TaCZ de l'arme,
- * donc changer l'arme dans la config suffit : les munitions suivent.
+ * Le calibre et la taille du chargeur sont lus dans l'index TaCZ de l'arme.
  */
 public final class Loadout {
     private static final ResourceLocation GUN_ITEM = new ResourceLocation("tacz", "modern_kinetic_gun");
     private static final ResourceLocation AMMO_ITEM = new ResourceLocation("tacz", "ammo");
 
-    /** Vide l'inventaire et donne l'equipement de la config. */
-    public static void give(ServerPlayer player) {
+    /** Vide l'inventaire, donne la classe et active ses atouts. */
+    public static void give(ServerPlayer player, ClassLoadout loadout) {
         player.getInventory().clearContent();
-        player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        String perkMarker = PerkEffects.marker(loadout);
 
-        int slot = 0;
-        slot = giveWeapon(player, slot, WarfareConfig.primaryGun, WarfareConfig.primaryMagazines);
-        giveWeapon(player, slot, WarfareConfig.secondaryGun, WarfareConfig.secondaryMagazines);
+        int slot = giveWeapon(player, 0, loadout.primaryGun(), WarfareConfig.primaryMagazines, perkMarker);
+        giveWeapon(player, slot, loadout.secondaryGun(), WarfareConfig.secondaryMagazines, perkMarker);
 
         for (String entry : WarfareConfig.extraItems) {
             ItemStack stack = parseExtra(entry);
             if (!stack.isEmpty()) player.getInventory().add(stack);
         }
-        player.inventoryMenu.broadcastChanges();
         player.getInventory().selected = 0;
+        player.inventoryMenu.broadcastChanges();
+        ActivePerks.apply(player, loadout);
     }
 
     /** @return le prochain slot libre de la barre d'action. */
-    private static int giveWeapon(ServerPlayer player, int slot, String gunIdStr, int magazines) {
+    private static int giveWeapon(ServerPlayer player, int slot, String gunIdStr, int magazines, String perkMarker) {
         ResourceLocation gunId = ResourceLocation.tryParse(gunIdStr);
         if (gunId == null) {
-            Warfare.LOGGER.warn("Identifiant d'arme invalide dans la config : {}", gunIdStr);
+            Warfare.LOGGER.warn("Identifiant d'arme invalide : {}", gunIdStr);
             return slot;
         }
         Optional<CommonGunIndex> index = TimelessAPI.getCommonGunIndex(gunId);
         if (index.isEmpty()) {
             Warfare.LOGGER.warn("Arme TaCZ inconnue : {} (verifier les packs charges)", gunId);
             player.sendSystemMessage(com.warfare.util.Txt.info(
-                    Component.literal("Arme TaCZ inconnue dans la config : " + gunId)));
+                    Component.literal("Arme TaCZ inconnue : " + gunId)));
             return slot;
         }
 
         int magSize = Math.max(1, index.get().getGunData().getAmmoAmount());
         ResourceLocation ammoId = index.get().getGunData().getAmmoId();
 
-        ItemStack gun = makeGun(gunId, magSize);
+        ItemStack gun = makeGun(gunId, magSize, perkMarker);
         if (!gun.isEmpty()) {
             player.getInventory().setItem(slot, gun);
             slot++;
@@ -72,8 +75,8 @@ public final class Loadout {
         return slot;
     }
 
-    /** Une arme deja chargee, chambre comprise. */
-    public static ItemStack makeGun(ResourceLocation gunId, int magSize) {
+    /** Une arme deja chargee, chambre comprise, marquee avec les atouts de la classe. */
+    public static ItemStack makeGun(ResourceLocation gunId, int magSize, String perkMarker) {
         Item item = ForgeRegistries.ITEMS.getValue(GUN_ITEM);
         if (item == null) {
             Warfare.LOGGER.error("Item {} introuvable : TaCZ n'est pas charge ?", GUN_ITEM);
@@ -85,6 +88,9 @@ public final class Loadout {
         iGun.setGunId(stack, gunId);
         iGun.setCurrentAmmoCount(stack, magSize);
         iGun.setBulletInBarrel(stack, true);
+        if (perkMarker != null && !perkMarker.isEmpty()) {
+            stack.getOrCreateTag().putString(PerkEffects.PERK_TAG, perkMarker);
+        }
         return stack;
     }
 
@@ -125,7 +131,7 @@ public final class Loadout {
         return new ItemStack(item, count);
     }
 
-    /** Nom localise de l'arme (cle de traduction TaCZ), pour le killfeed. */
+    /** Nom localise de l'arme (cle de traduction TaCZ), pour le killfeed et le menu. */
     public static Component gunName(ResourceLocation gunId) {
         return TimelessAPI.getCommonGunIndex(gunId)
                 .map(i -> (Component) Component.translatable(i.getPojo().getName()))

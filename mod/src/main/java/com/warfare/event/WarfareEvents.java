@@ -4,6 +4,7 @@ import com.tacz.guns.api.event.common.EntityKillByGunEvent;
 import com.warfare.Warfare;
 import com.warfare.game.GameManager;
 import com.warfare.game.WarfareData;
+import com.warfare.loadout.ClassStore;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
@@ -11,6 +12,7 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.LogicalSide;
@@ -35,6 +37,11 @@ public final class WarfareEvents {
         if (!data.isReady()) {
             Warfare.LOGGER.warn("Arene incomplete : utiliser /warfare setlobby puis /warfare addspawn");
         }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        ClassStore.clearCache();
     }
 
     @SubscribeEvent
